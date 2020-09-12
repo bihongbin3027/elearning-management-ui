@@ -1,0 +1,18 @@
+{
+  "extends": [
+    "react-app",
+    "plugin:jsx-a11y/recommended",
+    "plugin:prettier/recommended"
+  ],
+  "plugins": ["jsx-a11y"],
+  "rules": {
+    "prettier/prettier": "error",
+    // 有一些 event 的时候, 不需要 role 属性, 不需要其他解释
+    "jsx-a11y/no-static-element-interactions": 0,
+    "jsx-a11y/click-events-have-key-events": 0,
+    // 检查 Hook 的规则
+    "react-hooks/rules-of-hooks": "error",
+    // 检查 effect 的依赖
+    "react-hooks/exhaustive-deps": "warn"
+  }
+}

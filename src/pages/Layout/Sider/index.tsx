@@ -1,0 +1,156 @@
+import React, { useCallback } from 'react'
+import { useHistory } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { Menu, Button } from 'antd'
+import { HomeOutlined, AppstoreOutlined } from '@ant-design/icons'
+import layoutStore from '@/store/module/layout'
+import { RootStateType } from '@/store/rootReducer'
+import { AnyObjectType } from '@/typings'
+import { SetUserMenuPayloadType } from '@/store/module/auth/types'
+import { SxyIcon } from '@/style/module/icon'
+import { GlobalConstant } from '@/config'
+import { SiderStyle } from '@/pages/Layout/Sider/style'
+
+const { SubMenu } = Menu
+
+const SiderBox = () => {
+  const history = useHistory()
+  const dispatchRedux = useDispatch()
+  const { rootMenuList, openSider } = useSelector((state: RootStateType) => ({
+    ...state.auth,
+    ...state.layout,
+  }))
+
+  /**
+   * @Description 递归渲染菜单
+   * @Author bihongbin
+   * @Date 2020-08-17 10:13:20
+   */
+  const transformMenuList = useCallback((list: SetUserMenuPayloadType[]) => {
+    // 菜单排序
+    const menuList = Array.from(list).sort((a, b) => a.seqSort - b.seqSort)
+    return menuList.map((item) => {
+      if (item.children) {
+        return (
+          <SubMenu
+            key={item.path}
+            title={item.name}
+            icon={<AppstoreOutlined />}
+          >
+            {transformMenuList(item.children)}
+          </SubMenu>
+        )
+      } else {
+        return <Menu.Item key={item.path}>{item.name}</Menu.Item>
+      }
+    })
+  }, [])
+
+  /**
+   * @Description 侧边栏菜单被选中时调用
+   * @Author bihongbin
+   * @Date 2020-08-18 09:42:32
+   */
+  const handleSiderMenuSelect = (menu: AnyObjectType) => {
+    history.push(menu.key)
+  }
+
+  return (
+    <SiderStyle
+      width={GlobalConstant.siderWidth}
+      collapsedWidth={GlobalConstant.siderCollapsedWidth}
+      collapsed={openSider}
+      onCollapse={(open) => {
+        dispatchRedux(layoutStore.actions.setLeftSiderOpen(open))
+      }}
+    >
+      <div className="logo-wrap">
+        <div className="logo-box">
+          <SxyIcon
+            className="logo-icon"
+            width={50}
+            height={50}
+            name="logo.png"
+            onClick={() => history.push('/index')}
+          />
+          <h1>华旅云创教育</h1>
+        </div>
+        <Button
+          type="text"
+          className="sider-open-btn is-btn-link"
+          onClick={() => {
+            dispatchRedux(layoutStore.actions.setLeftSiderOpen(!openSider))
+          }}
+        >
+          {openSider ? (
+            <SxyIcon
+              className="logo-icon"
+              width={14}
+              height={14}
+              name="head_arrow_right.png"
+            />
+          ) : (
+            <SxyIcon
+              className="logo-icon"
+              width={14}
+              height={14}
+              name="head_arrow_left.png"
+            />
+          )}
+        </Button>
+      </div>
+      <Menu
+        className="slider-menu-scroll"
+        defaultSelectedKeys={['/index']}
+        mode="inline"
+        theme="dark"
+        onSelect={handleSiderMenuSelect}
+      >
+        <Menu.Item key="/index" icon={<HomeOutlined />}>
+          首页
+        </Menu.Item>
+        <Menu.Item key="/file-manage" icon={<AppstoreOutlined />}>
+          文件管理
+        </Menu.Item>
+        <SubMenu
+          key="/order-manage"
+          title="订单管理"
+          icon={<AppstoreOutlined />}
+        >
+          <Menu.Item key="/goods-manage">商品订单</Menu.Item>
+          <Menu.Item key="/service-manage">服务订单</Menu.Item>
+        </SubMenu>
+        <SubMenu
+          key="/course-manage"
+          title="课程管理"
+          icon={<AppstoreOutlined />}
+        >
+          <Menu.Item key="/course-manage">课程管理</Menu.Item>
+          <Menu.Item key="/subject-manage">科目管理</Menu.Item>
+        </SubMenu>
+        <Menu.Item key="/question-bank-manage" icon={<AppstoreOutlined />}>
+          试卷管理
+        </Menu.Item>
+        <SubMenu key="/goods-list" title="商品管理" icon={<AppstoreOutlined />}>
+          <Menu.Item key="/goods-list">商品管理</Menu.Item>
+          <Menu.Item key="/goods-sort">商品分类</Menu.Item>
+          <Menu.Item key="/goods-group">商品组管理</Menu.Item>
+          <Menu.Item key="/goods-label">标签组管理</Menu.Item>
+        </SubMenu>
+        <SubMenu
+          key="/classes-manage"
+          title="教务管理"
+          icon={<AppstoreOutlined />}
+        >
+          <Menu.Item key="/classes-manage">班级管理</Menu.Item>
+          <Menu.Item key="/intelligent-course">智能排课</Menu.Item>
+          <Menu.Item key="/class-registration">上课登记</Menu.Item>
+          <Menu.Item key="/registrar-setting">教务设置</Menu.Item>
+        </SubMenu>
+        {transformMenuList(rootMenuList)}
+      </Menu>
+    </SiderStyle>
+  )
+}
+
+export default SiderBox
