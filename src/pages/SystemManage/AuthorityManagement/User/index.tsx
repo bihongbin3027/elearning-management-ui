@@ -14,7 +14,7 @@ import TableOperate from '@/components/TableOperate'
 import PermissionsViewModal from '@/pages/SystemManage/AuthorityManagement/PermissionsViewModal'
 import AssigningRolesModal from '@/pages/SystemManage/AuthorityManagement/AssigningRolesModal'
 import RoleDetailsModal from '@/pages/SystemManage/AuthorityManagement/RoleDetailsModal'
-import ResetPasswordModal from '@/pages/SystemManage/AuthorityManagement/ResetPasswordModal'
+import ResetPasswordModal from '@/components/ResetPasswordModal'
 import { handleRowEnableDisable, handleRowDelete } from '@/utils'
 import {
   getBasicQtyList,

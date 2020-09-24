@@ -3,7 +3,7 @@ import { HashRouter as Router, Route, Switch } from 'react-router-dom'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import { ThemeProvider } from 'styled-components'
-import moment from 'moment'
+import 'moment/locale/zh-cn'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/lib/locale-provider/zh_CN'
 import store, { persistor } from '@/store'
@@ -13,8 +13,6 @@ import LoginNew from '@/pages/LoginNew' // 新登录页面
 
 import { ThemesDefault } from '@/style/theme'
 import { GlobalStyle } from '@/style'
-
-moment.locale('zh-cn')
 
 function App() {
   return (

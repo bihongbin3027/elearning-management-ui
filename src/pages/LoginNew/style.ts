@@ -86,7 +86,7 @@ export const LoginMain = styled.div`
       padding-right: 0;
       padding-bottom: 18px;
       &:focus {
-        box-shadow: none;
+        box-shadow: none !important;
       }
     }
   }

@@ -115,6 +115,8 @@ export const handleRowDelete = (
   if (ids.length) {
     confirm({
       title: '提示',
+      width: 360,
+      className: 'confirm-modal',
       content: '确定删除吗？',
       centered: true,
       onOk() {

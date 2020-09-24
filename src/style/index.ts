@@ -1,6 +1,8 @@
 import { createGlobalStyle } from 'styled-components'
 import { ThemesDefault } from '@/style/theme'
 
+const confirmModalIcon = require('../assets/icon/popup_abnorma.png')
+
 export const GlobalStyle = createGlobalStyle`
 
   img {
@@ -202,6 +204,22 @@ export const GlobalStyle = createGlobalStyle`
     margin-bottom: 2.5rem !important;
   }
 
+  /* 普通文本hover变主题色 */
+  .link-text-hover {
+    cursor: pointer;
+    color: ${ThemesDefault['@color-text']};
+    &:hover {
+      color: ${ThemesDefault['@color-text-primary-hover']};
+    }
+  }
+
+  /* 文本超出显示省略号 */
+  .text-overstep-ellipsis {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
   .text-desc {
     color: ${ThemesDefault['@color-text-description']};
   }
@@ -333,6 +351,12 @@ export const GlobalStyle = createGlobalStyle`
         }
       }
     }
+    /* 隐藏卡片头底部边框 */
+    &.card-head-border-none {
+      .ant-card-head {
+        border-bottom: 0 none;
+      }
+    }
     /* 卡片里面的警告提示 */
     .sxy-alert-box {
       border-bottom: 1px solid ${ThemesDefault['@color-border-base']};
@@ -341,7 +365,9 @@ export const GlobalStyle = createGlobalStyle`
     }
     /* 隐藏卡片标题是select的左内边距 */
     .ant-card-head {
+      position: relative;
       .ant-card-head-title {
+        overflow: visible;
         .ant-select {
           .ant-select-selector {
             padding-left: 0;
@@ -443,7 +469,8 @@ export const GlobalStyle = createGlobalStyle`
         .ant-input,
         .ant-select-selector,
         .ant-picker,
-        .ant-input-affix-wrapper {
+        .ant-input-affix-wrapper,
+        .ant-input-group-wrapper .ant-input-group-addon {
           border-color: ${ThemesDefault['@color-border-grey']};
           background-color: ${ThemesDefault['@color-bg-grey']};
         }
@@ -550,6 +577,22 @@ export const GlobalStyle = createGlobalStyle`
         color: ${ThemesDefault['@color-text']};
       }
     }
+    /* 隐藏*号 */
+    .hide-star {
+      .ant-form-item-label {
+        .ant-form-item-required {
+          &:before {
+            display: none;
+          }
+        }
+      }
+    }
+    /* 自定义宽度 */
+    .ant-input {
+      &.w140 {
+        width: 140px;
+      }
+    }
     /* .ant-form-item-label {
       > label {
         vertical-align: top;
@@ -574,11 +617,30 @@ export const GlobalStyle = createGlobalStyle`
 
   /* 表格 */
   .ant-table-wrapper {
+    /* 浅黑色表头 */
     &.table-header-blank {
       .ant-table-thead {
         tr {
           th, td {
             background-color: #ced1d7;
+            &:first-child {
+              border-top-left-radius: 0;
+              border-bottom-left-radius: 0;
+            }
+            &:last-child {
+              border-top-right-radius: 0;
+              border-bottom-right-radius: 0;
+            }
+          }
+        }
+      }
+    }
+    /* 灰色表头 */
+    &.table-header-grey {
+      .ant-table-thead {
+        tr {
+          th, td {
+            background-color: ${ThemesDefault['@color-bg-grey']};
             &:first-child {
               border-top-left-radius: 0;
               border-bottom-left-radius: 0;
@@ -667,6 +729,42 @@ export const GlobalStyle = createGlobalStyle`
   /* 弹出框 */
   .ant-modal {
     top: 66px;
+    /* confirm类型 */
+    &.confirm-modal {
+      .ant-modal-content {
+        .ant-modal-body {
+          padding-top: 40px;
+          padding-bottom: 40px;
+          .ant-modal-confirm-body {
+            text-align: center;
+            > .anticon {
+              float: none;
+              width: 60px;
+              height: 60px;
+              margin-right: 0;
+              background-image: ${() => 'url(' + confirmModalIcon + ')'};
+              background-repeat: no-repeat;
+              background-position: 0 0;
+              background-size: contain;
+              svg {
+                display: none;
+              }
+            }
+            .ant-modal-confirm-title {
+              margin-top: 16px;
+            }
+            .ant-modal-confirm-content {
+              margin-left: 0;
+            }
+          }
+          .ant-modal-confirm-btns {
+            float: none;
+            margin-top: 20px;
+            text-align: center;
+          }
+        }
+      }
+    }
     .ant-modal-content {
       .ant-modal-close {
         .ant-modal-close-x {
@@ -728,6 +826,15 @@ export const GlobalStyle = createGlobalStyle`
             }
           }
         }
+        /* 弹窗表单下边距（大） */
+        &.form-large-margin {
+          .ant-row {
+            &.ant-form-item {
+              margin-bottom: 20px;
+            }
+          }
+        }
+        /* 弹窗表单下边距（默认小） */
         .ant-row {
           &.ant-form-item {
             margin-bottom: 8px;
@@ -742,6 +849,16 @@ export const GlobalStyle = createGlobalStyle`
         overflow: hidden;
         &.avatar-selected-bg {
           border-color: ${ThemesDefault['@color-border-primary']};
+        }
+      }
+      /* 隐藏card */
+      .card-disappear {
+        .ant-card{
+          border: 0 none;
+          .ant-card-body {
+            padding-left: 0;
+            padding-right: 0;
+          }
         }
       }
     }

@@ -135,6 +135,10 @@ const stateValue = {
     apiMethod: getReportConfigSubheadList,
     width: 640,
     tableColumnsList: {
+      tableConfig: {
+        className: 'table-header-grey',
+        scroll: { y: 500 },
+      },
       rowType: 'checkbox' as 'checkbox',
       list: [
         {
@@ -159,6 +163,10 @@ const stateValue = {
     apiMethod: getReportConfigSubheadList,
     width: 640,
     tableColumnsList: {
+      tableConfig: {
+        className: 'table-header-grey',
+        scroll: { y: 500 },
+      },
       rowType: 'checkbox' as 'checkbox',
       list: [
         {

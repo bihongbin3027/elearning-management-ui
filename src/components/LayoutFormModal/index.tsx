@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-08-01 15:13:11
  * @LastEditors bihongbin
- * @LastEditTime 2020-09-11 14:28:57
+ * @LastEditTime 2020-09-19 15:48:10
  */
 
 import React, {
@@ -24,13 +24,14 @@ import GenerateForm, {
 } from '@/components/GenerateForm'
 import { AnyObjectType, AjaxResultType } from '@/typings'
 
-export interface PropTypes {
+export interface PropFormTypes {
   visible: boolean // 打开或关闭
   disable?: boolean // 表单是否禁用
   id?: string | null | undefined
   title: string | null | undefined // 弹窗标题
   width?: number // 弹窗宽度
   topRender?: React.ReactElement // 表单弹窗头部显示的额外dom元素
+  submitRemoveField?: string[] // 提交表单需要移除的参数
   submitExtraParameters?: AnyObjectType // 需要提交表单的额外参数
   switchTransform?: string[] // 开关组件值转换成0和1
   submitApi?: (data: any, method: 'put' | 'post') => Promise<AjaxResultType> // 提交表单的接口
@@ -71,7 +72,7 @@ const stateValue = {
   disabled: false, // 表单是否可编辑，当不可编辑不能显示保存按钮
 }
 
-const LayoutFormModal = (props: PropTypes, ref: any) => {
+const LayoutFormModal = (props: PropFormTypes, ref: any) => {
   const formRef = useRef<FormCallType>() // 表单实例
   const [state, dispatch] = useReducer<ReducerType>((state, action) => {
     switch (action.type) {
@@ -130,6 +131,14 @@ const LayoutFormModal = (props: PropTypes, ref: any) => {
               formParams[props.switchTransform[i]] = '1'
             } else {
               formParams[props.switchTransform[i]] = '0'
+            }
+          }
+        }
+        // 额外指定参数移除
+        if (props.submitRemoveField) {
+          for (let i = 0; i < props.submitRemoveField.length; i++) {
+            if (formParams[props.submitRemoveField[i]]) {
+              delete formParams[props.submitRemoveField[i]]
             }
           }
         }

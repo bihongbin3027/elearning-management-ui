@@ -6,11 +6,15 @@ type ButtonType =
   | 'ghost'
   | 'dust'
   | 'white'
+  | 'light-gray'
   | 'dark-grey'
   | 'light-green'
   | 'deep-green'
   | 'light-red'
+  | 'deep-red'
   | 'pale-yellow'
+  | 'deep-yellow'
+  | 'light-blue'
 
 interface SxyButtonType extends ThemesDefaultType {
   mode?: ButtonType
@@ -40,12 +44,13 @@ export const SxyButton = styled.button<SxyButtonType>`
   user-select: none;
   touch-action: manipulation;
   height: ${(props: SxyButtonType) => {
-    if (props.size) {
-      if (props.size === 'large') {
+    switch (props.size) {
+      case 'large':
         return '40px'
-      }
-    } else {
-      return '30px'
+      case 'small':
+        return '26px'
+      default:
+        return '30px'
     }
   }};
   padding: 3px 15px;
@@ -86,6 +91,8 @@ export const SxyButton = styled.button<SxyButtonType>`
         return '#fff'
       case 'ghost':
         return props.theme['@color-text-primary']
+      case 'light-gray':
+        return props.theme['@color-text-normal']
       case 'dark-grey':
         return props.theme['@color-text-description']
       case 'light-green':
@@ -94,8 +101,14 @@ export const SxyButton = styled.button<SxyButtonType>`
         return '#fff'
       case 'light-red':
         return props.theme['@color-text-error']
+      case 'deep-red':
+        return '#fff'
       case 'pale-yellow':
         return props.theme['@color-text-warning']
+      case 'deep-yellow':
+        return '#fff'
+      case 'light-blue':
+        return props.theme['@color-text-primary']
     }
   }};
   background-color: ${(props: SxyButtonType) => {
@@ -108,6 +121,8 @@ export const SxyButton = styled.button<SxyButtonType>`
         return props.theme['@color-bg-grey']
       case 'white':
         return '#fff'
+      case 'light-gray':
+        return props.theme['@color-bg-grey']
       case 'dark-grey':
         return props.theme['@color-bg-track']
       case 'light-green':
@@ -116,8 +131,14 @@ export const SxyButton = styled.button<SxyButtonType>`
         return props.theme['@color-bg-finish']
       case 'light-red':
         return props.theme['@color-bg-light-red']
+      case 'deep-red':
+        return props.theme['@color-bg-error']
       case 'pale-yellow':
         return props.theme['@color-bg-pale-yellow']
+      case 'deep-yellow':
+        return props.theme['@color-bg-yellow']
+      case 'light-blue':
+        return props.theme['@color-bg-light-blue']
     }
   }};
   &:hover {
@@ -145,14 +166,29 @@ export const SxyButton = styled.button<SxyButtonType>`
           return props.theme['@color-bg-primary-hover']
         case 'dust':
           return props.theme['@color-bg-track']
+        case 'light-gray':
+          return props.theme['@color-bg-track']
         case 'light-green':
           return props.theme['@color-bg-light-green-hover']
+        case 'deep-green':
+          return props.theme['@color-bg-finish-hover']
         case 'light-red':
           return props.theme['@color-bg-light-red-hover']
+        case 'deep-red':
+          return props.theme['@color-bg-error-hover']
         case 'pale-yellow':
           return props.theme['@color-bg-pale-yellow-hover']
+        case 'deep-yellow':
+          return props.theme['@color-bg-yellow-hover']
+        case 'light-blue':
+          return props.theme['@color-bg-light-blue-hover']
       }
     }};
+  }
+  /* 超小 */
+  &.tiny {
+    padding-left: 10px;
+    padding-right: 10px;
   }
   &.btn-white-active-text {
     color: ${(props) => props.theme['@color-text-primary']};

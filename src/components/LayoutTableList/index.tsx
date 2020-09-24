@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-07-31 09:53:54
  * @LastEditors bihongbin
- * @LastEditTime 2020-09-11 15:23:57
+ * @LastEditTime 2020-09-18 15:33:49
  */
 
 import React, {
@@ -28,7 +28,8 @@ import { GlobalConstant } from '@/config'
 import { SxyButton, SxyButtonIconGroup } from '@/style/module/button'
 import { SxyIcon } from '@/style/module/icon'
 
-export type LayoutTableCallType = TableCallType // 暴漏方法给父组件的类型
+export type LayoutTableCallType = TableCallType &
+  Pick<FormCallType, 'formSetValues'> // 暴漏方法给父组件的类型
 export type FormFuncCallType = FormCallType // 表单可使用的方法类型
 export type FormListCallType = FormListType // 表单list数据类型
 
@@ -65,6 +66,7 @@ export interface LayoutTableListProp {
   api?: (data: any) => Promise<AjaxResultType> // 数据来源接口
   autoGetList?: boolean // 是否开启默认查询功能
   middleEmpty?: boolean // 是否显示无数据的状态
+  searchClassName?: true // 是否去掉search-form样式
   searchFormList?: FormListType[] // 搜索表单数据
   // 时间类型格式转换
   searchFormDateTransform?: {
@@ -78,7 +80,7 @@ export interface LayoutTableListProp {
   leftRender?: RenderType // 左侧需要渲染的额外元素和尺寸
   topRender?: RenderType // 上方需要渲染的额外元素和尺寸
   rightRender?: RenderType // 右侧需要渲染的额外元素和尺寸
-  censusTips?: React.ReactNode // 一些统计提示
+  censusTips?: React.ReactNode // 一些统计提示（或其他jsx元素）
   cardTopTitle?: React.ReactNode // 卡片标题
   cardTopButton?: CardButtonType[] // 卡片头部操作按钮
   // 表格头数据和表格尺寸
@@ -273,6 +275,12 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
         tableRef.current.getTableList(values)
       }
     },
+    // 设置表单值
+    formSetValues: (values) => {
+      if (searchForm.current) {
+        searchForm.current.formSetValues(values)
+      }
+    },
     // 表格选中ids
     getSelectIds: () => {
       if (tableRef.current) {
@@ -300,9 +308,14 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
     <>
       <Row justify="space-between" gutter={20}>
         <Col span={21}>
-          {searchFormList && searchFormList.length ? (
+          <div
+            style={{
+              display:
+                searchFormList && searchFormList.length ? 'block' : 'none',
+            }}
+          >
             <GenerateForm
-              className="search-form"
+              className={!props.searchClassName ? 'search-form' : undefined}
               rowGridConfig={{ gutter: 10 }}
               colGirdConfig={formSearchColConfig}
               ref={searchForm}
@@ -323,7 +336,7 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
                 return <></>
               }}
             />
-          ) : null}
+          </div>
         </Col>
         {state.searchRightBtnOpen ? (
           <Col>

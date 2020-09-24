@@ -21,8 +21,8 @@ function* saga() {
       message.success('登录成功', 1.5)
       window.location.href = '#/index'
     } catch (error) {
-      yield put(actions.setLoginLoading(false))
       yield put(actions.setVerificationCode()) // 重置验证码和uuid
+      yield put(actions.setLoginLoading(false))
     }
   })
 }

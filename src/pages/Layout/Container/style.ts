@@ -13,6 +13,6 @@ export const ContentStyle = styled(Layout)`
     margin-bottom: 16px;
   }
   .site-layout-background {
-    min-height: calc(100vh - 130px);
+    min-height: calc(100vh - 156px);
   }
 `

@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-06-23 10:46:52
  * @LastEditors bihongbin
- * @LastEditTime 2020-09-04 11:13:50
+ * @LastEditTime 2020-09-19 15:55:00
  */
 
 import React, {
@@ -41,6 +41,13 @@ interface SelectDataType {
 type remoteValueType = string | undefined
 type remotePromiseType = (value: remoteValueType) => Promise<SelectType[]>
 
+interface UnionType {
+  componentName: 'Input' | 'Select'
+  name: string // 字段名
+  placeholder?: string
+  selectData?: SelectDataType[]
+}
+
 // 表单参数配置
 export interface FormListType {
   colProps?: ColProps // 用来控制单个表单元素宽度
@@ -72,6 +79,7 @@ export interface FormListType {
     // 对应Input组件的输入类型
     inputMode?:
       | 'text'
+      | 'password'
       | 'email'
       | 'url'
       | 'number'
@@ -81,12 +89,8 @@ export interface FormListType {
       | 'color'
   }
   unionConfig?: {
-    // 要显示2个表单的类型
-    unionItems: {
-      componentName: 'Input'
-      name: string // 字段名
-      placeholder?: string
-    }[]
+    // 要显示n个表单的类型
+    unionItems: UnionType[]
     divide?: string // 分隔符
   }
   remoteConfig?: {
@@ -167,6 +171,25 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
   const formRender = () => {
     if (!list) {
       return
+    }
+    // 渲染Union类型表单
+    const unionRender = (item: FormListType, m: UnionType) => {
+      if (m.componentName === 'Input') {
+        return <Input disabled={item.disabled} placeholder={m.placeholder} />
+      }
+      if (m.componentName === 'Select') {
+        return (
+          <Select disabled={item.disabled} placeholder={m.placeholder}>
+            {m.selectData
+              ? m.selectData.map((s: SelectDataType, k: number) => (
+                  <Option value={s.value} key={k}>
+                    {s.label}
+                  </Option>
+                ))
+              : null}
+          </Select>
+        )
+      }
     }
     return list.map((item: FormListType, index: number) => {
       let childForm = null
@@ -339,10 +362,8 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
                   }}
                   key={k}
                 >
-                  <Form.Item name={m.name}>
-                    {m.componentName === 'Input' ? (
-                      <Input placeholder={m.placeholder} />
-                    ) : null}
+                  <Form.Item name={m.name} noStyle>
+                    {unionRender(item, m)}
                   </Form.Item>
                   {k < len - 1 ? (
                     <span className="divide">
@@ -376,6 +397,10 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
         'rangePickerPlaceholder',
         'visible',
       ])
+      // Form.Item内有多个表单（Union类型），如果有设置name移除name
+      if (item.componentName === 'Union') {
+        resetItem = _.omit(resetItem, ['name'])
+      }
       return !item.visible ? (
         <Col {...colGirdConfig} {...item.colProps} key={index}>
           <Form.Item

@@ -107,31 +107,34 @@ const SiderBox = () => {
         onSelect={handleSiderMenuSelect}
       >
         <Menu.Item key="/index" icon={<HomeOutlined />}>
-          首页
+          工作台
         </Menu.Item>
-        <Menu.Item key="/file-manage" icon={<AppstoreOutlined />}>
-          文件管理
+        <Menu.Item key="/file-center" icon={<AppstoreOutlined />}>
+          文件中心
         </Menu.Item>
         <SubMenu
           key="/order-manage"
-          title="订单管理"
+          title="订单中心"
           icon={<AppstoreOutlined />}
         >
           <Menu.Item key="/goods-manage">商品订单</Menu.Item>
           <Menu.Item key="/service-manage">服务订单</Menu.Item>
         </SubMenu>
         <SubMenu
-          key="/course-manage"
-          title="课程管理"
+          key="/course-center"
+          title="课程中心"
           icon={<AppstoreOutlined />}
         >
-          <Menu.Item key="/course-manage">课程管理</Menu.Item>
+          <Menu.Item key="/course-center">课程管理</Menu.Item>
           <Menu.Item key="/subject-manage">科目管理</Menu.Item>
         </SubMenu>
-        <Menu.Item key="/question-bank-manage" icon={<AppstoreOutlined />}>
-          试卷管理
-        </Menu.Item>
-        <SubMenu key="/goods-list" title="商品管理" icon={<AppstoreOutlined />}>
+        <SubMenu key="/clue" title="招生中心" icon={<AppstoreOutlined />}>
+          <Menu.Item key="/clue/my">我的线索</Menu.Item>
+          <Menu.Item key="/public-clue/pc">公共线索</Menu.Item>
+          <Menu.Item key="/admissions/manage">招生管理</Menu.Item>
+          <Menu.Item key="/group-newspaper/main-list">企业团报</Menu.Item>
+        </SubMenu>
+        <SubMenu key="/goods-list" title="商品中心" icon={<AppstoreOutlined />}>
           <Menu.Item key="/goods-list">商品管理</Menu.Item>
           <Menu.Item key="/goods-sort">商品分类</Menu.Item>
           <Menu.Item key="/goods-group">商品组管理</Menu.Item>
@@ -139,13 +142,24 @@ const SiderBox = () => {
         </SubMenu>
         <SubMenu
           key="/classes-manage"
-          title="教务管理"
+          title="教务中心"
           icon={<AppstoreOutlined />}
         >
           <Menu.Item key="/classes-manage">班级管理</Menu.Item>
+          <Menu.Item key="/question-bank-manage">试卷管理</Menu.Item>
           <Menu.Item key="/intelligent-course">智能排课</Menu.Item>
           <Menu.Item key="/class-registration">上课登记</Menu.Item>
           <Menu.Item key="/registrar-setting">教务设置</Menu.Item>
+        </SubMenu>
+        <SubMenu
+          key="/student-center"
+          title="学员中心"
+          icon={<AppstoreOutlined />}
+        >
+          <Menu.Item key="/student-center/class-roster">班级花名册</Menu.Item>
+          <Menu.Item key="/student-center/enrolled-students">
+            在读学生
+          </Menu.Item>
         </SubMenu>
         {transformMenuList(rootMenuList)}
       </Menu>

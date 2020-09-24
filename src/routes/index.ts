@@ -1,20 +1,27 @@
 import Home from '@/pages/Home' // 首页
-import FileManage from '@/pages/FileManage' // 文件管理
-import GoodsManage from '@/pages/OrderManage/Goods' // 订单管理-商品订单
-import ServiceManage from '@/pages/OrderManage/Service' // 订单管理-服务订单
-import CourseManage from '@/pages/CourseManage/Course' // 课程管理-课程管理
-import SubjectManage from '@/pages/CourseManage/Subject' // 课程管理-科目管理
-import ClassesManage from '@/pages/RegistrarManage/Classes' // 教务管理-班级管理
-import ClassesDetails from '@/pages/RegistrarManage/Classes/ClassesDetails' // 教务管理-班级管理-班级详情
-import ClassRegistration from '@/pages/RegistrarManage/ClassRegistration' // 教务管理-上课登记
-import IntelligentCourse from '@/pages/RegistrarManage/SchedulingCourse' // 教务管理-智能排课
-import RegistrarSetting from '@/pages/RegistrarManage/RegistrarSetting' // 教务管理-教务设置
-import QuestionBankMainList from '@/pages/PaperManage/QuestionBank' // 试卷管理-题库管理
-import TestQuestionsMainList from '@/pages/PaperManage/TestQuestions' // 试卷管理-试题管理
-import GoodsMainList from '@/pages/GoodsManage/GoodsList' // 商品管理-商品管理
-import GoodsSortMainList from '@/pages/GoodsManage/GoodsSort' // 商品管理-商品分类
-import GoodsGroupMainList from '@/pages/GoodsManage/GoodsGroup' // 商品管理-商品组
-import GoodsLabelMainList from '@/pages/GoodsManage/GoodsLabel' // 商品管理-标签组
+import CommonFunctions from '@/pages/Home/CommonFunctions' // 首页-常用功能
+import Notice from '@/pages/Home/Notice' // 首页-通知公告
+import FileCenter from '@/pages/FileCenter' // 文件中心
+import GoodsManage from '@/pages/OrderCenter/Goods' // 订单中心-商品订单
+import ServiceManage from '@/pages/OrderCenter/Service' // 订单中心-服务订单
+import CourseCenter from '@/pages/CourseCenter/Course' // 课程中心-课程管理
+import SubjectManage from '@/pages/CourseCenter/Subject' // 课程管理-科目管理
+import MyClueMainList from '@/pages/AdmissionsCenter/Clue' // 招生中心-我的线索
+import PublicCluesMainList from '@/pages/AdmissionsCenter/PublicClues' // 招生中心-公共线索
+import AdmissionsManageMainList from '@/pages/AdmissionsCenter/AdmissionsList' // 招生中心-招生管理
+import EnterpriseGroupNews from '@/pages/AdmissionsCenter/EnterpriseGroupNews' // 招生中心-企业团报
+import ClassesCenter from '@/pages/RegistrarCenter/Classes' // 教务中心-班级管理
+import ClassesDetails from '@/pages/RegistrarCenter/Classes/ClassesDetails' // 教务中心-班级管理-班级详情
+import ClassRegistration from '@/pages/RegistrarCenter/ClassRegistration' // 教务中心-上课登记
+import IntelligentCourse from '@/pages/RegistrarCenter/SchedulingCourse' // 教务中心-智能排课
+import RegistrarSetting from '@/pages/RegistrarCenter/RegistrarSetting' // 教务中心-教务设置
+import QuestionBankMainList from '@/pages/RegistrarCenter/Paper/QuestionBank' // 教务中心-试卷管理-题库管理
+import TestQuestionsMainList from '@/pages/RegistrarCenter/Paper/TestQuestions' // 教务中心-试卷管理-试题管理
+import StudentCenter from '@/pages/StudentCenter' // 学员中心-班级花名册
+import GoodsMainList from '@/pages/GoodsCenter/GoodsList' // 商品中心-商品管理
+import GoodsSortMainList from '@/pages/GoodsCenter/GoodsSort' // 商品中心-商品分类
+import GoodsGroupMainList from '@/pages/GoodsCenter/GoodsGroup' // 商品中心-商品组
+import GoodsLabelMainList from '@/pages/GoodsCenter/GoodsLabel' // 商品中心-标签组
 import RoleMainList from '@/pages/SystemManage/AuthorityManagement/Role' // 角色管理
 import MenuMainList from '@/pages/SystemManage/AuthorityManagement/Menu' // 菜单管理
 import UserMainList from '@/pages/SystemManage/AuthorityManagement/User' // 用户管理
@@ -33,8 +40,16 @@ const routes = [
     component: Home,
   },
   {
-    path: '/file-manage',
-    component: FileManage,
+    path: '/common-functions',
+    component: CommonFunctions,
+  },
+  {
+    path: '/notice',
+    component: Notice,
+  },
+  {
+    path: '/file-center',
+    component: FileCenter,
   },
   {
     path: '/goods-manage',
@@ -45,16 +60,32 @@ const routes = [
     component: ServiceManage,
   },
   {
-    path: '/course-manage',
-    component: CourseManage,
+    path: '/course-center',
+    component: CourseCenter,
   },
   {
     path: '/subject-manage',
     component: SubjectManage,
   },
   {
+    path: '/clue',
+    component: MyClueMainList,
+  },
+  {
+    path: '/public-clue',
+    component: PublicCluesMainList,
+  },
+  {
+    path: '/admissions',
+    component: AdmissionsManageMainList,
+  },
+  {
+    path: '/group-newspaper',
+    component: EnterpriseGroupNews,
+  },
+  {
     path: '/classes-manage',
-    component: ClassesManage,
+    component: ClassesCenter,
   },
   {
     path: '/classes-details',
@@ -79,6 +110,10 @@ const routes = [
   {
     path: '/test-questions-manage',
     component: TestQuestionsMainList,
+  },
+  {
+    path: '/student-center',
+    component: StudentCenter,
   },
   {
     path: '/goods-list',

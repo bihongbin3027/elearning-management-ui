@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-08-07 11:55:09
  * @LastEditors bihongbin
- * @LastEditTime 2020-08-31 14:21:48
+ * @LastEditTime 2020-09-23 10:35:55
  */
 
 import React, { useRef, useReducer } from 'react'
@@ -110,7 +110,7 @@ const LayoutTableModal = (props: PropTypes) => {
       maskClosable={false}
       footer={null}
     >
-      <div className="form-solid-line">
+      <div className="form-solid-line card-disappear">
         <LayoutTableList
           ref={layoutTableRef}
           api={props.apiMethod}
