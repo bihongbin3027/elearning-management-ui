@@ -1,51 +1,27 @@
-import React, { useReducer, useEffect, useCallback, useContext } from 'react'
+import React, { useEffect, useCallback, useContext } from 'react'
 import { Card, Spin, message, Space, Tooltip, Modal } from 'antd'
 import _ from 'lodash'
+import moment from 'moment'
+import useSetState from '@/hooks/useSetState'
 import { FileItemType } from '@/pages/FileCenter/FileItems'
-import {
-  FileManageContext,
-  ActionType as ParentActionType,
-} from '@/pages/FileCenter'
+import { FileManageContext } from '@/pages/FileCenter'
 import { SxyIcon } from '@/style/module/icon'
+import { handleFileList, editFileListStatus } from '@/api/fileManage'
 import { FilePreview } from './style'
 
 const { confirm } = Modal
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_LOADING = '[SetLoading Action]',
-  SET_CURRENT = '[SetCurrent Action]',
-}
-
-const stateValue = {
-  loading: false, // 加载loading
-  current: {} as FileItemType,
+interface StateType {
+  loading: boolean
+  current: FileItemType
 }
 
 const Preview = () => {
-  const { mainState, mainDispatch } = useContext(FileManageContext)
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_LOADING: // 设置加载loading
-        return {
-          ...state,
-          loading: action.payload,
-        }
-      case ActionType.SET_CURRENT: // 设置当前选中
-        return {
-          ...state,
-          current: action.payload,
-        }
-    }
-  }, stateValue)
+  const { mainState, mainSetState } = useContext(FileManageContext)
+  const [state, setState] = useSetState<StateType>({
+    loading: false, // 加载loading
+    current: {}, // 当前文件详情
+  })
 
   /**
    * @Description 渲染图片或图标
@@ -63,7 +39,7 @@ const Preview = () => {
           fileExt === 'png' ||
           fileExt === 'gif')
       ) {
-        return <img src={state.current.fileUrl} alt="" />
+        return <img src={state.current.fileUrl} alt={state.current.name} />
       } else {
         return (
           <SxyIcon
@@ -81,22 +57,63 @@ const Preview = () => {
    * @Author bihongbin
    * @Date 2020-08-11 18:38:50
    */
-  const detectImageLoading = useCallback((current) => {
-    let img = new Image()
-    if (current.fileUrl) {
-      dispatch({
-        type: ActionType.SET_LOADING,
-        payload: true,
-      })
-      img.src = current.fileUrl
-      img.onload = () => {
-        dispatch({
-          type: ActionType.SET_LOADING,
-          payload: false,
-        })
+  const detectImageLoading = useCallback(
+    (current: FileItemType) => {
+      let img = new Image()
+      if (current.fileUrl && current.fileExt) {
+        if (
+          current.fileExt === 'jpeg' ||
+          current.fileExt === 'jpg' ||
+          current.fileExt === 'png' ||
+          current.fileExt === 'gif'
+        ) {
+          setState({
+            loading: true,
+          })
+          img.src = current.fileUrl
+          img.onerror = () => {
+            setState({
+              loading: false,
+            })
+          }
+          img.onload = () => {
+            setState({
+              loading: false,
+            })
+          }
+        }
       }
-    }
-  }, [])
+    },
+    [setState],
+  )
+
+  /**
+   * @Description 获取当前文件详情
+   * @Author bihongbin
+   * @Date 2020-11-17 09:30:34
+   */
+  const getDetails = useCallback(
+    async (id) => {
+      try {
+        const result = await handleFileList(
+          {
+            id,
+            folderId: mainState.parentId,
+          },
+          'get',
+        )
+        setState({
+          current: result.data,
+        })
+        mainSetState((prev) => {
+          prev.openPreview.current = result.data
+          return prev
+        })
+        detectImageLoading(result.data) // 检测图片加载状态
+      } catch (error) {}
+    },
+    [detectImageLoading, mainSetState, mainState.parentId, setState],
+  )
 
   /**
    * @Description 切换上一页和下一页
@@ -104,7 +121,7 @@ const Preview = () => {
    * @Date 2020-08-11 18:17:20
    */
   const switchPreview = useCallback(
-    (type: 'prev' | 'next') => {
+    async (type: 'prev' | 'next') => {
       const len = mainState.openPreview.list.length
       let index = 0
       for (let i = 0; i < len; i++) {
@@ -130,24 +147,25 @@ const Preview = () => {
           return
         }
       }
-      detectImageLoading(mainState.openPreview.list[index]) // 检测图片加载状态
-      dispatch({
-        type: ActionType.SET_CURRENT,
-        payload: mainState.openPreview.list[index],
+      setState({
+        loading: false,
       })
+      getDetails(mainState.openPreview.list[index].id)
     },
-    [detectImageLoading, mainState.openPreview.list, state],
+    [getDetails, mainState.openPreview.list, setState, state],
   )
 
+  /**
+   * @Description 关闭详情
+   * @Author bihongbin
+   * @Date 2020-11-17 09:39:33
+   */
   const handleClosePreview = useCallback(() => {
-    mainDispatch({
-      type: ParentActionType.SET_OPEN_PREVIEW,
-      payload: {
-        ...mainState.openPreview,
-        visible: false,
-      },
+    mainSetState((prev) => {
+      prev.openPreview.visible = false
+      return prev
     })
-  }, [mainDispatch, mainState.openPreview])
+  }, [mainSetState])
 
   /**
    * @Description 编辑
@@ -155,27 +173,25 @@ const Preview = () => {
    * @Date 2020-08-13 09:33:35
    */
   const handleEditFile = () => {
-    mainDispatch({
-      type: ParentActionType.SET_NEW_FOLDER_MODAL_DATA,
-      payload: {
-        visible: true,
-        id: state.current.id,
-        title: '重命名',
-        formList: [
-          {
-            componentName: 'Input',
-            name: 'originalFileName',
-            label: '名称',
-            placeholder: '请填写名称',
-            rules: [
-              {
-                required: true,
-                message: '请填写名称',
-              },
-            ],
-          },
-        ],
-      },
+    mainSetState((prev) => {
+      prev.newFolderModal.visible = true
+      prev.newFolderModal.id = state.current.id
+      prev.newFolderModal.title = '重命名'
+      prev.newFolderModal.formList = [
+        {
+          componentName: 'Input',
+          name: 'originalFileName',
+          label: '名称',
+          placeholder: '请填写名称',
+          rules: [
+            {
+              required: true,
+              message: '请填写名称',
+            },
+          ],
+        },
+      ]
+      return prev
     })
   }
 
@@ -187,52 +203,55 @@ const Preview = () => {
   const handleDeleteFile = () => {
     confirm({
       title: '提示',
+      width: 360,
+      className: 'confirm-modal',
       content: '确定删除吗？',
       centered: true,
       onOk() {
         return new Promise(async (resolve, reject) => {
           try {
-            setTimeout(() => {
-              let currentIndex = 0
-              // 过滤删除预览页内容
-              const newListData = mainState.openPreview.list.filter(
-                (item, index) => {
-                  if (item.id === state.current.id) {
-                    currentIndex = index // 当前删除索引
-                  }
-                  return item.id !== state.current.id
-                },
-              )
-              // 删除主页面的内容
-              if (mainState.fileList.length) {
-                // 根据id删除
-                mainDispatch({
-                  type: ParentActionType.SET_FILE_LIST,
-                  payload: _.pullAllBy(
-                    mainState.fileList,
-                    [state.current],
-                    'id',
-                  ),
-                })
-              }
-              if (newListData.length) {
-                if (currentIndex === newListData.length) {
-                  currentIndex = currentIndex - 1
+            await editFileListStatus({
+              folderId: mainState.parentId,
+              status: 2,
+              data: [state.current.id],
+            })
+            let currentIndex = 0
+            // 过滤删除预览页内容
+            const newListData = mainState.openPreview.list.filter(
+              (item, index) => {
+                if (item.id === state.current.id) {
+                  currentIndex = index // 当前删除索引
                 }
-                mainDispatch({
-                  type: ParentActionType.SET_OPEN_PREVIEW,
-                  payload: {
-                    visible: true,
-                    current: newListData[currentIndex],
-                    list: newListData,
-                  },
-                })
-              } else {
-                handleClosePreview() // 退出预览模式
+                return item.id !== state.current.id
+              },
+            )
+            // 删除主页面的内容
+            if (mainState.fileList.length) {
+              // 根据id删除
+              mainSetState({
+                fileList: _.pullAllBy(
+                  mainState.fileList,
+                  [state.current],
+                  'id',
+                ),
+              })
+            }
+            if (newListData.length) {
+              if (currentIndex === newListData.length) {
+                currentIndex = currentIndex - 1
               }
-              message.success('删除成功', 1.5)
-              resolve()
-            }, 1000)
+              mainSetState({
+                openPreview: {
+                  visible: true,
+                  current: newListData[currentIndex],
+                  list: newListData,
+                },
+              })
+            } else {
+              handleClosePreview() // 退出预览模式
+            }
+            message.success('删除成功', 1.5)
+            resolve()
           } catch (error) {
             reject(new Error('删除失败'))
           }
@@ -242,17 +261,13 @@ const Preview = () => {
   }
 
   /**
-   * @Description 设置当前选中
+   * @Description 设置当前文件详情
    * @Author bihongbin
    * @Date 2020-08-11 18:05:29
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_CURRENT,
-      payload: mainState.openPreview.current,
-    })
-    detectImageLoading(mainState.openPreview.current) // 检测图片加载状态
-  }, [detectImageLoading, mainState])
+    getDetails(mainState.openPreview.current.id)
+  }, [getDetails, mainState.openPreview, setState])
 
   /**
    * @Description 键盘监听
@@ -333,11 +348,11 @@ const Preview = () => {
           </div>
           <div className="preview-file-us">
             <span className="preview-file-uploadTime">
-              上传时间：{state.current.createTime}
+              上传时间：
+              {moment(state.current.createTime).format('YYYY-MM-DD HH:mm:ss')}
             </span>
             <span className="preview-file-size">
-              大小：{state.current.fileSize}
-              kb
+              大小：{state.current.size}
             </span>
           </div>
           <Space className="preview-file-foot" size={12}>

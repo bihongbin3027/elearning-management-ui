@@ -1,70 +1,33 @@
-import React, { useReducer, useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Modal, Row, Button, Col, message } from 'antd'
+import useSetState from '@/hooks/useSetState'
 import GenerateForm, {
   FormCallType,
   FormListType,
 } from '@/components/GenerateForm'
-import { AnyObjectType, AjaxResultType } from '@/typings'
+import { AnyObjectType, SubmitApiType } from '@/typings'
 
 interface PropType {
   visible: boolean
   width?: number
   title: string
-  id?: string
   submitExtraParameters?: AnyObjectType // 需要提交表单的额外参数
-  submitApi?: (data: any, method: 'put' | 'post') => Promise<AjaxResultType> // 提交表单的接口
+  submitApi?: SubmitApiType // 提交表单的接口
+  onConfirm?: () => void
   onCancel: () => void
 }
 
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_FORM_LIST = '[SetFormList Action]',
-  SET_SAVE_LOADING = '[SetSaveLoading Action]',
-}
-
-const stateValue = {
-  formList: [] as FormListType[], // 表单数据
-  saveLoading: false, // 保存loading
+interface StateType {
+  formList: FormListType[]
+  saveLoading: boolean
 }
 
 const ResetPasswordView = (props: PropType) => {
   const formRef = useRef<FormCallType>()
-  const [state, dispatch] = useReducer<
-    (state: StateType, action: Action) => StateType
-  >((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_FORM_LIST: // 设置表单数据
-        return {
-          ...state,
-          formList: action.payload,
-        }
-      case ActionType.SET_SAVE_LOADING: // 保存loading
-        return {
-          ...state,
-          saveLoading: action.payload,
-        }
-      default:
-        return state
-    }
-  }, stateValue)
-
-  /**
-   * @Description 设置修改密码弹窗表单数据
-   * @Author bihongbin
-   * @Date 2020-09-17 15:35:22
-   */
-  const handleFormState = (data: StateType['formList']) => {
-    dispatch({
-      type: ActionType.SET_FORM_LIST,
-      payload: data,
-    })
-  }
+  const [state, setState] = useSetState<StateType>({
+    formList: [], // 表单数据
+    saveLoading: false, // 保存loading
+  })
 
   /**
    * @Description 确定
@@ -81,20 +44,21 @@ const ResetPasswordView = (props: PropType) => {
           ...props.submitExtraParameters,
         }
         if (props.submitApi) {
+          setState({
+            saveLoading: true,
+          })
           try {
-            dispatch({
-              type: ActionType.SET_SAVE_LOADING,
-              payload: true,
-            })
             await props.submitApi(formParams, 'put')
-            dispatch({
-              type: ActionType.SET_SAVE_LOADING,
-              payload: false,
-            })
-            message.success('修改成功', 1.5)
+            message.success(`${props.title}成功`, 1.5)
+            if (props.onConfirm) {
+              props.onConfirm()
+            }
           } catch (error) {
-            message.warn('修改失败', 1.5)
+            message.warn(`${props.title}失败`, 1.5)
           }
+          setState({
+            saveLoading: false,
+          })
         }
       }
     }
@@ -106,46 +70,50 @@ const ResetPasswordView = (props: PropType) => {
    * @Date 2020-08-05 16:21:31
    */
   useEffect(() => {
-    handleFormState([
-      {
-        componentName: 'Input',
-        name: 'password',
-        label: '密码',
-        inputConfig: {
-          inputMode: 'password',
-        },
-        rules: [
-          {
-            required: true,
-            message: '请输入密码',
+    setState({
+      formList: [
+        {
+          componentName: 'Input',
+          name: 'password',
+          label: '密码',
+          inputConfig: {
+            inputMode: 'password',
           },
-        ],
-      },
-      {
-        componentName: 'Input',
-        name: 'confirm',
-        label: '确认密码',
-        inputConfig: {
-          inputMode: 'password',
-        },
-        dependencies: ['password'],
-        rules: [
-          {
-            required: true,
-            message: '请输入确认密码',
-          },
-          ({ getFieldValue }: any) => ({
-            validator(rule: any, value: any) {
-              if (!value || getFieldValue('password') === value) {
-                return Promise.resolve()
-              }
-              return Promise.reject('您输入的两个密码不匹配')
+          placeholder: '请输入密码',
+          rules: [
+            {
+              required: true,
+              message: '请输入密码',
             },
-          }),
-        ],
-      },
-    ])
-  }, [])
+          ],
+        },
+        {
+          componentName: 'Input',
+          name: 'password_confirm',
+          label: '确认密码',
+          inputConfig: {
+            inputMode: 'password',
+          },
+          dependencies: ['password'],
+          placeholder: '请输入确认密码',
+          rules: [
+            {
+              required: true,
+              message: '请输入确认密码',
+            },
+            ({ getFieldValue }: any) => ({
+              validator(rule: any, value: any) {
+                if (!value || getFieldValue('password') === value) {
+                  return Promise.resolve()
+                }
+                return Promise.reject('两次输入的密码不一致')
+              },
+            }),
+          ],
+        },
+      ],
+    })
+  }, [setState])
 
   return (
     <Modal

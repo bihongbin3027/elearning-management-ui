@@ -1,44 +1,24 @@
-import React, { useReducer } from 'react'
-import { Switch, Route, Redirect } from 'react-router-dom'
+import React from 'react'
+import { Route, Redirect } from 'react-router-dom'
+import CacheRoute, { CacheSwitch } from 'react-router-cache-route'
 import { useSelector } from 'react-redux'
 import { Layout } from 'antd'
-import routes from '@/routes'
 import { RootStateType } from '@/store/rootReducer'
 import { GlobalConstant } from '@/config'
+import * as authTypes from '@/store/module/auth/types'
 import { ContentStyle } from '@/pages/Layout/Container/style'
+
+// const req = require.context('components', false, /\.(tsx)$/); // 使用这种方法加载下面组件内的动态组件
 
 const { Content } = Layout
 
-type ReducerType = (state: StateType, action: Action) => StateType
-interface Action {
-  type: ActionType
-  payload: any
-}
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_CRUMBS_LIST = '[SetCrumbsList Action]',
-}
-
-const stateValue = {
-  // 面包屑
-  crumbsList: [],
-}
-
 const ContainerBox = () => {
-  const { openSider } = useSelector((state: RootStateType) => state.layout)
-
-  const [state] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_CRUMBS_LIST: // 设置面包屑内容
-        return {
-          ...state,
-          crumbsList: action.payload,
-        }
-    }
-  }, stateValue)
-
-  console.log('面包屑内容', state.crumbsList)
+  const { authToken, tabLayout, openSider } = useSelector(
+    (state: RootStateType) => ({
+      ...state.auth,
+      ...state.layout,
+    }),
+  )
 
   return (
     <ContentStyle
@@ -50,19 +30,32 @@ const ContainerBox = () => {
     >
       <Content>
         <div className="site-layout-background">
-          <Switch>
-            {routes.map((item: any) => {
-              return (
-                <Route
-                  key={item.path}
-                  path={item.path}
-                  render={(props) => <item.component {...props} />}
-                />
+          <CacheSwitch>
+            {!authToken ? (
+              <Redirect to="/login" />
+            ) : (
+              tabLayout.tabList.map(
+                (item: authTypes.SetUserMenuPayloadType) => {
+                  try {
+                    return (
+                      <CacheRoute
+                        cacheKey={item.navigateUrl}
+                        key={item.navigateUrl}
+                        path={item.navigateUrl}
+                        component={
+                          require(`@/pages${item.interfaceRef}`).default
+                        }
+                      />
+                    )
+                  } catch (error) {
+                    return null
+                  }
+                },
               )
-            })}
+            )}
             <Route path="/" exact render={() => <Redirect to="/index" />} />
             <Redirect to="/404" />
-          </Switch>
+          </CacheSwitch>
         </div>
       </Content>
     </ContentStyle>

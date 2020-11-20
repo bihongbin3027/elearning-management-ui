@@ -24,7 +24,7 @@ import LayoutFormModal, {
 import { SxyButton, SxyButtonIconGroup } from '@/style/module/button'
 import { SxyIcon } from '@/style/module/icon'
 import GenerateTable, { TableCallType } from '@/components/GenerateTable'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import { GlobalConstant } from '@/config'
 import { AnyObjectType } from '@/typings'
 import { handleRowDelete } from '@/utils'
@@ -407,10 +407,11 @@ const CourseMainList = () => {
         fixed: 'right',
         width: 135,
         render: (value: number, record: any) => {
-          const operatingData = []
+          const operatingData: TableOperateButtonType[] = []
           // 编辑
           operatingData.push({
             name: '编辑',
+            type: 'edit',
             onClick: () => {
               handleModalState({
                 visible: true,
@@ -424,6 +425,7 @@ const CourseMainList = () => {
           // 删除
           operatingData.push({
             name: '删除',
+            type: 'delete',
             onClick: () => {
               if (tableRef.current) {
                 handleRowDelete([record.id], deleteBasicQtyList, formSubmit)
@@ -775,7 +777,6 @@ const CourseMainList = () => {
           scroll={{ x: 1500, y: 500 }}
         />
         <Modal
-          width={650}
           title={state.handleModal.title}
           visible={state.handleModal.visible}
           onCancel={() => handleModalState({ visible: false })}
@@ -855,7 +856,9 @@ const CourseMainList = () => {
       </Card>
       <LayoutFormModal
         ref={addCourseModalFormRef}
-        onConfirm={(result) => console.log('静态表单值：', result)}
+        onConfirm={(result: AnyObjectType) =>
+          console.log('静态表单值：', result)
+        }
         onCancel={() => handleRepeatCourseModalState({ visible: false })}
         formConfig={{
           initialValues: {
@@ -863,7 +866,7 @@ const CourseMainList = () => {
             c: '0',
             e: '0',
           },
-          onValuesChange: (changedFields) => {
+          onValuesChange: (changedFields: AnyObjectType) => {
             const ce = changedFields['b']
             // 清空重复排课结束方式值(input或picker)
             dispatch({

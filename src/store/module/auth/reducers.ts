@@ -1,41 +1,37 @@
 import { persistReducer } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
 import * as types from './types'
-import { v4 as uuidV4 } from 'uuid'
 
-const initialAuthState = {
+const initialAuthState: types.InitAuthStateType = {
   loginLoading: false, // 登录页面loading
-  // 验证码和uuid
-  verificationCode: {
-    uuid: '',
-    img: '',
-  },
   user: undefined, // 用户信息
   rootMenuList: [], // 菜单数据
   authToken: undefined, // 用户token
-  tokenType: undefined, // token类型
+  // 系统信息
+  systemInfo: {
+    sysName: '',
+    sysCode: '',
+    companyId: '',
+    companyName: '',
+    logoImageUrl: '',
+  },
   // tab数据相关
   tabLayout: {
-    current: 0,
     tabList: [
       {
-        component: '/Home',
+        parentIds: '-1',
+        id: '-1',
+        pid: '-1',
         name: '首页',
-        path: '/index',
-        menuParam: {},
+        code: 'INDEX',
+        category: 'MENU',
+        navigateUrl: '/index',
+        interfaceRef: '/Home',
+        urlFlag: 0, // 是否外部地址 0:否（内部）, 1:是（外部）
+        visibleFlag: 1, // 是否可见，0-否、1=是
+        permissionList: [],
+        permissionCodeList: [],
         children: [],
-        permissions: [],
-        permissionsActionCode: [],
-        active: false,
-        homePage: false,
-        href: '/index',
-        icon: 'icon-home',
-        parentPath: '',
-        selected: false,
-        seqSort: 10,
-        resourceId: 12,
-        leafFlag: 0,
-        urlFlag: false,
       },
     ],
   },
@@ -55,30 +51,18 @@ const reducer = persistReducer<types.InitAuthStateType, types.AuthActionType>(
           loginLoading: action.payload,
         }
       }
-      // 设置验证码和uuid
-      case types.SET_VERIFICATION_CODE: {
-        const baseUrl = `${process.env.REACT_APP_API_URL}/sibeuaaapi/img/createCheckCode?`
-        const baseUuid = uuidV4()
+      // 设置token
+      case types.SET_AUTH_TOKEN: {
         return {
           ...state,
-          verificationCode: {
-            uuid: baseUuid,
-            img: `${baseUrl}cacheBuster=${new Date().getTime()}&&uuid=${baseUuid}`,
-          },
+          authToken: action.payload,
         }
       }
       // 设置用户数据
       case types.SET_USER: {
-        const { access_token, token_type, xing } = action.payload
-        const user = decodeURIComponent(escape(window.atob(xing))).split('_') // base64转utf-8
         return {
           ...state,
-          authToken: access_token,
-          tokenType: token_type,
-          user: {
-            userId: user[0],
-            fullname: user[1],
-          },
+          user: action.payload,
         }
       }
       // 设置菜单数据
@@ -96,6 +80,13 @@ const reducer = persistReducer<types.InitAuthStateType, types.AuthActionType>(
             ...state.tabLayout,
             ...action.payload,
           },
+        }
+      }
+      // 设置系统信息
+      case types.SET_SYSTEM_INFO: {
+        return {
+          ...state,
+          systemInfo: action.payload,
         }
       }
       // 退出

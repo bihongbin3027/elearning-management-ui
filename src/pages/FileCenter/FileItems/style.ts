@@ -24,15 +24,20 @@ export const Items = styled.div`
   }
   .file-item-content,
   .ant-checkbox-wrapper {
+    max-width: 100%;
     padding: 12px;
     .file-img {
+      display: flex;
       height: 100px;
+      align-items: center;
+      justify-content: center;
       img {
         max-height: 100%;
       }
     }
   }
   .file-name {
+    max-width: 100%;
     margin-top: 5px;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -60,6 +65,8 @@ export const Items = styled.div`
       top: 5px;
       z-index: 1;
       + span {
+        display: block;
+        width: 100%;
         padding-left: 0;
         padding-right: 0;
       }

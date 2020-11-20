@@ -20,7 +20,7 @@ import GenerateForm, {
   FormListType,
 } from '@/components/GenerateForm'
 import GenerateTable, { TableCallType } from '@/components/GenerateTable'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import { handleRowDelete } from '@/utils'
 import { AnyObjectType } from '@/typings'
 import { SxyButton } from '@/style/module/button'
@@ -189,10 +189,11 @@ const ClassesDetails = () => {
         fixed: 'right',
         width: 90,
         render: (value: number, record: any) => {
-          const operatingData = []
+          const operatingData: TableOperateButtonType[] = []
           // 删除
           operatingData.push({
             name: '删除',
+            type: 'delete',
             onClick: () => {
               if (studentTableRef.current) {
                 handleRowDelete(

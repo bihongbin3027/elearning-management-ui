@@ -1,109 +1,101 @@
-import React, { useRef, useReducer, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
+import _ from 'lodash'
+import moment from 'moment'
+import { ColumnType } from 'antd/es/table'
+import { message } from 'antd'
+import useSetState from '@/hooks/useSetState'
 import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
+  CardButtonType,
 } from '@/components/LayoutTableList'
 import LayoutFormModal, {
   LayoutFormModalCallType,
+  LayoutFormPropTypes,
 } from '@/components/LayoutFormModal'
-import TableOperate from '@/components/TableOperate'
+import { GlobalConstant } from '@/config'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
+import { SxyIcon } from '@/style/module/icon'
 import { handleRowEnableDisable, handleRowDelete } from '@/utils'
+import { AnyObjectType } from '@/typings'
+import { statusData } from '@/config/selectData'
 import {
-  getBasicQtyList,
-  handleBasicQtyList,
-  deleteBasicQtyList,
-  setBasicQtyStatus,
-} from '@/api/basicData'
+  getCompanyList,
+  handleCompanyList,
+  switchCompanyRowsList,
+} from '@/api/systemManage/company'
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_SEARCH_FORM_LIST = '[SetSearchFormList Action]',
-  SET_CARD_HANDLE_BUTTON_LIST = '[SetCardHandleButtonList Action]',
-  SET_TABLE_COLUMNS_LIST = '[SetTableColumnsList Action]',
-  SET_HANDLE_MODAL = '[SetHandleModal Action]',
-}
-
-const stateValue = {
-  // 头部搜索表单数据
-  searchFormList: [
-    {
-      componentName: 'Input',
-      name: 'companyName',
-      placeholder: '公司名称',
-    },
-    {
-      componentName: 'Input',
-      name: 'companyCode',
-      placeholder: '公司编号',
-    },
-    {
-      componentName: 'Input',
-      name: 'id',
-      placeholder: 'id',
-    },
-  ] as FormListCallType[],
-  cardHandleButtonList: [], // 卡片操作按钮
-  tableColumnsList: [], // 表格数据列表表头数据
-  // 新增编辑查看弹窗
+interface StateType {
+  searchFormList: FormListCallType[]
+  cardHandleButtonList: CardButtonType[]
+  tableColumnsList: ColumnType<AnyObjectType>[]
   handleModal: {
-    visible: false,
-    disable: false,
-    id: '',
-    title: '',
-    submitApi: handleBasicQtyList,
-    formList: [] as FormListCallType[],
-  },
+    currentRows: string[]
+  } & LayoutFormPropTypes
 }
 
 const CompanyMainList = () => {
+  const authBasic = GlobalConstant.buttonPermissions.basic // 基础权限
   const layoutTableRef = useRef<LayoutTableCallType>()
   const layoutFormModalRef = useRef<LayoutFormModalCallType>()
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_SEARCH_FORM_LIST: // 设置头部搜索表单数据
-        return {
-          ...state,
-          searchFormList: action.payload,
-        }
-      case ActionType.SET_CARD_HANDLE_BUTTON_LIST: // 设置公司卡片操作按钮
-        return {
-          ...state,
-          cardHandleButtonList: action.payload,
-        }
-      case ActionType.SET_TABLE_COLUMNS_LIST: // 设置列表表头数据
-        return {
-          ...state,
-          tableColumnsList: action.payload,
-        }
-      case ActionType.SET_HANDLE_MODAL: // 设置新增编辑查看弹窗数据
-        return {
-          ...state,
-          handleModal: {
-            ...state.handleModal,
-            ...action.payload,
-          },
-        }
-    }
-  }, stateValue)
+  const [state, setState] = useSetState<StateType>({
+    // 头部搜索表单数据
+    searchFormList: [
+      {
+        componentName: 'Input',
+        name: 'companyName',
+        placeholder: '公司名称',
+      },
+      {
+        componentName: 'Input',
+        name: 'companyCode',
+        placeholder: '公司编号',
+      },
+    ],
+    cardHandleButtonList: [], // 卡片操作按钮
+    tableColumnsList: [], // 表格数据列表表头数据
+    // 新增编辑查看弹窗
+    handleModal: {
+      visible: false,
+      disable: false,
+      id: '',
+      title: '',
+      currentRows: [], // 表格勾选中的id数据
+      submitApi: handleCompanyList,
+      formList: [],
+    },
+  })
 
   /**
-   * @Description 设置新增编辑查看弹窗数据
+   * @Description 获取详情
    * @Author bihongbin
-   * @Date 2020-08-07 15:36:34
+   * @Date 2020-10-22 17:51:15
    */
-  const handleCompanyState = (data: Partial<StateType['handleModal']>) => {
-    dispatch({
-      type: ActionType.SET_HANDLE_MODAL,
-      payload: data,
-    })
+  const getDetails = async (id: string) => {
+    if (layoutFormModalRef.current) {
+      layoutFormModalRef.current.setFormLoading(true)
+      try {
+        const result = await handleCompanyList(
+          {
+            id,
+          },
+          'get',
+        )
+        layoutFormModalRef.current.setFormValues({
+          companyCode: result.data.companyCode,
+          companyName: result.data.companyName,
+          id: result.data.id,
+          parentName: result.data.parentName || '0',
+          startTime: moment(result.data.startTime),
+          endTime: moment(result.data.endTime),
+          groupFlag: String(result.data.groupFlag),
+          innerFlag: String(result.data.innerFlag),
+          publicFlag: String(result.data.publicFlag),
+          remark: result.data.remark,
+        })
+      } catch (error) {}
+      layoutFormModalRef.current.setFormLoading(false)
+    }
   }
 
   /**
@@ -112,8 +104,8 @@ const CompanyMainList = () => {
    * @Date 2020-08-07 15:44:58
    */
   useEffect(() => {
-    handleCompanyState({
-      formList: [
+    setState((prev) => {
+      prev.handleModal.formList = [
         {
           componentName: 'Input',
           name: 'companyCode',
@@ -142,18 +134,22 @@ const CompanyMainList = () => {
         },
         {
           componentName: 'Input',
+          name: 'id',
+          label: '公司id',
+          disabled: true,
+        },
+        {
+          componentName: 'Input',
           name: 'sortSeq',
           label: '排序序号',
           placeholder: '请输入排序序号',
           disabled: state.handleModal.disable,
         },
         {
-          componentName: 'Select',
-          name: 'parentId',
+          componentName: 'Input',
+          name: 'parentName',
           label: '父级公司',
-          placeholder: '请选择父级公司',
-          selectData: [],
-          disabled: state.handleModal.disable,
+          disabled: true,
         },
         {
           componentName: 'DatePicker',
@@ -224,9 +220,30 @@ const CompanyMainList = () => {
           placeholder: '请输入备注',
           disabled: state.handleModal.disable,
         },
-      ],
+      ]
+      return prev
     })
-  }, [state.handleModal.disable])
+  }, [setState, state.handleModal.disable])
+
+  /**
+   * @Description 设置父级公司
+   * @Author bihongbin
+   * @Date 2020-10-26 10:53:56
+   */
+  useEffect(() => {
+    if (state.handleModal.visible) {
+      if (layoutFormModalRef.current) {
+        const rows = layoutTableRef.current?.getSelectRowsArray()
+        if (rows && rows.length) {
+          setTimeout(() => {
+            layoutFormModalRef.current?.setFormValues({
+              parentName: rows[0].companyName,
+            })
+          })
+        }
+      }
+    }
+  }, [state.handleModal.visible])
 
   /**
    * @Description 设置卡片操作按钮数据
@@ -234,23 +251,33 @@ const CompanyMainList = () => {
    * @Date 2020-08-07 15:32:06
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_CARD_HANDLE_BUTTON_LIST,
-      payload: [
+    setState({
+      cardHandleButtonList: [
         {
           name: '新增',
+          authCode: authBasic.ADD,
+          icon: 'icon_list_add.png',
           clickConfirm: () => {
-            handleCompanyState({
-              visible: true,
-              disable: false,
-              id: '',
-              title: '新增公司',
-            })
+            if (layoutTableRef.current) {
+              const rows = layoutTableRef.current.getSelectIds()
+              if (rows.length > 1) {
+                message.warn('只能选择一个公司', 1.5)
+                return
+              }
+              setState((prev) => {
+                prev.handleModal.visible = true
+                prev.handleModal.disable = false
+                prev.handleModal.id = ''
+                prev.handleModal.currentRows = rows
+                prev.handleModal.title = '新增公司'
+                return prev
+              })
+            }
           },
         },
       ],
     })
-  }, [])
+  }, [authBasic.ADD, setState])
 
   /**
    * @Description 设置表格列表表头数据
@@ -258,36 +285,43 @@ const CompanyMainList = () => {
    * @Date 2020-08-07 15:24:52
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_TABLE_COLUMNS_LIST,
-      payload: [
+    setState({
+      tableColumnsList: [
         {
-          width: 60,
-          title: '序号',
-          dataIndex: 'sortSeq',
-        },
-        {
+          width: 250,
           title: '公司名称',
           dataIndex: 'companyName',
+          ellipsis: true,
         },
         {
           title: '公司编号',
           dataIndex: 'companyCode',
+          ellipsis: true,
         },
-        // {
-        //   title: '状态',
-        //   dataIndex: 'status',
-        // },
+        {
+          title: '状态',
+          dataIndex: 'status',
+          ellipsis: true,
+          render: (value: number) => {
+            const result = statusData.find(
+              (item) => parseInt(item.value) === value,
+            )
+            return result && result.label
+          },
+        },
         {
           title: '创建人',
+          ellipsis: true,
           dataIndex: 'createUserName',
         },
         {
           title: '生效日期',
+          ellipsis: true,
           dataIndex: 'startTime',
         },
         {
           title: '失效日期',
+          ellipsis: true,
           dataIndex: 'endTime',
         },
         {
@@ -296,85 +330,93 @@ const CompanyMainList = () => {
           fixed: 'right',
           width: 170,
           render: (value: number, record: any) => {
-            const operatingData = []
+            const operatingData: TableOperateButtonType[] = []
             // 查看
             operatingData.push({
               name: '查看',
-              onClick: () => {
-                handleCompanyState({
-                  visible: true,
-                  disable: true,
-                  id: record.id,
-                  title: '查看公司',
-                })
-              },
+              authCode: authBasic.QUERY,
               svg: 'table_see.png',
-            })
-            // 编辑
-            operatingData.push({
-              name: '编辑',
               onClick: () => {
-                handleCompanyState({
-                  visible: true,
-                  disable: false,
-                  id: record.id,
-                  title: '编辑公司',
+                setState((prev) => {
+                  prev.handleModal.visible = true
+                  prev.handleModal.disable = true
+                  prev.handleModal.id = record.id
+                  prev.handleModal.title = '查看公司'
+                  return prev
                 })
+                getDetails(record.id)
               },
-              svg: 'table_edit.png',
             })
-            // 删除
-            operatingData.push({
-              name: '删除',
-              onClick: () => {
-                if (layoutTableRef.current) {
-                  handleRowDelete(
-                    [record.id],
-                    deleteBasicQtyList,
-                    layoutTableRef.current.getTableList,
-                  )
-                }
-              },
-              svg: 'table_delete.png',
-            })
-            // 更多
-            operatingData.push({
-              name: '更多',
-              type: 'more',
-              svg: 'table_more.png',
-              moreList: [
-                {
-                  name:
-                    (value === 1 && '禁用') ||
-                    (value === 2 && '启用') ||
-                    '未知',
-                  onClick: () => {
-                    if (layoutTableRef.current) {
-                      handleRowEnableDisable(
-                        {
-                          id: record.id,
-                          status: (value === 1 && 2) || (value === 2 && 1) || 0,
-                        },
-                        setBasicQtyStatus,
-                        layoutTableRef.current.getTableList,
-                      )
-                    }
-                  },
+            if (value > 0) {
+              // 编辑
+              operatingData.push({
+                name: '编辑',
+                authCode: authBasic.EDIT,
+                svg: 'table_edit.png',
+                onClick: () => {
+                  setState((prev) => {
+                    prev.handleModal.visible = true
+                    prev.handleModal.disable = false
+                    prev.handleModal.id = record.id
+                    prev.handleModal.title = '编辑公司'
+                    return prev
+                  })
+                  getDetails(record.id)
                 },
-              ],
-            })
+              })
+              // 挂起和启用
+              operatingData.push({
+                name: value === 1 ? '启用' : '挂起',
+                authCode: authBasic.ENABLEANDSUSPEND,
+                svg: value === 1 ? 'table_enable.png' : 'table_locking.png',
+                onClick: () => {
+                  if (layoutTableRef.current) {
+                    handleRowEnableDisable(
+                      {
+                        id: [record.id],
+                        status: record.status,
+                      },
+                      switchCompanyRowsList,
+                      layoutTableRef.current.getTableList,
+                      ['', '挂起', '启用'],
+                    )
+                  }
+                },
+              })
+              // 删除
+              operatingData.push({
+                name: '删除',
+                authCode: authBasic.DELETE,
+                svg: 'table_delete.png',
+                onClick: () => {
+                  if (layoutTableRef.current) {
+                    handleRowDelete(
+                      [record.id],
+                      handleCompanyList,
+                      layoutTableRef.current.getTableList,
+                    )
+                  }
+                },
+              })
+            }
             return <TableOperate operateButton={operatingData} />
           },
         },
       ],
     })
-  }, [])
+  }, [
+    authBasic.DELETE,
+    authBasic.EDIT,
+    authBasic.ENABLEANDSUSPEND,
+    authBasic.QUERY,
+    setState,
+  ])
 
   return (
     <>
       <LayoutTableList
         ref={layoutTableRef}
-        api={getBasicQtyList}
+        api={getCompanyList}
         searchFormList={state.searchFormList}
         autoGetList
         cardTopButton={state.cardHandleButtonList}
@@ -383,7 +425,24 @@ const CompanyMainList = () => {
           rowType: 'checkbox',
           list: state.tableColumnsList,
           tableConfig: {
-            scroll: { y: 500 },
+            expandable: {
+              indentSize: 50,
+              expandIcon: ({ expanded, onExpand, record }) => {
+                let iconName = expanded
+                  ? 'table_tree_open2.png'
+                  : 'table_tree_shut2.png'
+                return _.isArray(record.children) && record.children.length ? (
+                  <SxyIcon
+                    width={12}
+                    height={12}
+                    name={iconName}
+                    className="pointer mr-5"
+                    onClick={(e) => onExpand(record, e)}
+                  />
+                ) : null
+              },
+            },
+            scroll: { x: 1300, y: 500 },
           },
         }}
       />
@@ -391,13 +450,24 @@ const CompanyMainList = () => {
         ref={layoutFormModalRef}
         formConfig={{
           initialValues: {
-            sortSeq: '10',
             groupFlag: '0',
             innerFlag: '1',
-            publicFlag: '0',
+            publicFlag: '1',
+            parentName: '0',
           },
         }}
-        onCancel={() => handleCompanyState({ visible: false })}
+        submitExtraParameters={{
+          parentId:
+            state.handleModal.currentRows.length &&
+            state.handleModal.currentRows[0],
+        }}
+        onCancel={() => {
+          setState((prev) => {
+            prev.handleModal.visible = false
+            return prev
+          })
+        }}
+        onConfirm={() => layoutTableRef.current?.getTableList()}
         {...state.handleModal}
       />
     </>

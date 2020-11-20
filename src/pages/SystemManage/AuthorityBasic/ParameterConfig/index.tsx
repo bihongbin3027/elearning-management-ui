@@ -1,15 +1,20 @@
-import React, { useRef, useReducer, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { Avatar } from 'antd'
+import { ColumnType } from 'antd/es/table'
+import useSetState from '@/hooks/useSetState'
 import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
+  CardButtonType,
 } from '@/components/LayoutTableList'
 import LayoutFormModal, {
   LayoutFormModalCallType,
+  LayoutFormPropTypes,
 } from '@/components/LayoutFormModal'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import IconSelectionModal from '@/pages/SystemManage/AuthorityManagement/IconSelectionModal'
 import { handleRowEnableDisable, handleRowDelete } from '@/utils'
+import { AnyObjectType } from '@/typings'
 import {
   getBasicQtyList,
   handleBasicQtyList,
@@ -17,123 +22,57 @@ import {
   setBasicQtyStatus,
 } from '@/api/basicData'
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_SEARCH_FORM_LIST = '[SetSearchFormList Action]',
-  SET_CARD_HANDLE_BUTTON_LIST = '[SetCardHandleButtonList Action]',
-  SET_TABLE_COLUMNS_LIST = '[SetTableColumnsList Action]',
-  SET_HANDLE_MODAL = '[SetHandleModal Action]',
-  SET_ICON_MODAL = '[SetIconModal Action]',
-}
-
-const stateValue = {
-  // 头部搜索表单数据
-  searchFormList: [
-    {
-      componentName: 'Input',
-      name: 'a',
-      placeholder: '权限名称',
-    },
-    {
-      componentName: 'Input',
-      name: 'b',
-      placeholder: '权限编号',
-    },
-    {
-      componentName: 'Select',
-      name: 'c',
-      placeholder: '状态',
-      selectData: [],
-    },
-  ] as FormListCallType[],
-  cardHandleButtonList: [], // 卡片操作按钮
-  tableColumnsList: [], // 表格数据列表表头数据
-  // 新增编辑查看弹窗
-  handleModal: {
-    visible: false,
-    disable: false,
-    id: '',
-    title: '',
-    submitApi: handleBasicQtyList,
-    formList: [] as FormListCallType[],
-  },
-  // 图标弹窗
+interface StateType {
+  searchFormList: FormListCallType[]
+  cardHandleButtonList: CardButtonType[]
+  tableColumnsList: ColumnType<AnyObjectType>[]
+  handleModal: LayoutFormPropTypes
   iconModal: {
-    visible: false,
-    src: '',
-  },
+    visible: boolean
+    src: string
+  }
 }
 
 const ParameterConfigMainList = () => {
   const layoutTableRef = useRef<LayoutTableCallType>()
   const layoutFormModalRef = useRef<LayoutFormModalCallType>()
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_SEARCH_FORM_LIST: // 设置头部搜索表单数据
-        return {
-          ...state,
-          searchFormList: action.payload,
-        }
-      case ActionType.SET_CARD_HANDLE_BUTTON_LIST: // 设置卡片操作按钮
-        return {
-          ...state,
-          cardHandleButtonList: action.payload,
-        }
-      case ActionType.SET_TABLE_COLUMNS_LIST: // 设置表格数据列表表头数据
-        return {
-          ...state,
-          tableColumnsList: action.payload,
-        }
-      case ActionType.SET_HANDLE_MODAL: // 设置新增编辑查看弹窗数据
-        return {
-          ...state,
-          handleModal: {
-            ...state.handleModal,
-            ...action.payload,
-          },
-        }
-      case ActionType.SET_ICON_MODAL: // 设置图标弹窗数据
-        return {
-          ...state,
-          iconModal: {
-            ...state.iconModal,
-            ...action.payload,
-          },
-        }
-    }
-  }, stateValue)
-
-  /**
-   * @Description 设置新增编辑查看弹窗数据
-   * @Author bihongbin
-   * @Date 2020-08-07 15:36:34
-   */
-  const handleModalState = (data: Partial<StateType['handleModal']>) => {
-    dispatch({
-      type: ActionType.SET_HANDLE_MODAL,
-      payload: data,
-    })
-  }
-
-  /**
-   * @Description 设置图标弹窗相关
-   * @Author bihongbin
-   * @Date 2020-08-07 16:41:16
-   */
-  const handleIconState = (data: Partial<StateType['iconModal']>) => {
-    dispatch({
-      type: ActionType.SET_ICON_MODAL,
-      payload: data,
-    })
-  }
+  const [state, setState] = useSetState<StateType>({
+    // 头部搜索表单数据
+    searchFormList: [
+      {
+        componentName: 'Input',
+        name: 'a',
+        placeholder: '权限名称',
+      },
+      {
+        componentName: 'Input',
+        name: 'b',
+        placeholder: '权限编号',
+      },
+      {
+        componentName: 'Select',
+        name: 'c',
+        placeholder: '状态',
+        selectData: [],
+      },
+    ],
+    cardHandleButtonList: [], // 卡片操作按钮
+    tableColumnsList: [], // 表格数据列表表头数据
+    // 新增编辑查看弹窗
+    handleModal: {
+      visible: false,
+      disable: false,
+      id: '',
+      title: '',
+      submitApi: handleBasicQtyList,
+      formList: [],
+    },
+    // 图标弹窗
+    iconModal: {
+      visible: false,
+      src: '',
+    },
+  })
 
   /**
    * @Description 设置新增编辑查看弹窗默认表单字段
@@ -141,8 +80,8 @@ const ParameterConfigMainList = () => {
    * @Date 2020-08-07 15:44:58
    */
   useEffect(() => {
-    handleModalState({
-      formList: [
+    setState((prev) => {
+      prev.handleModal.formList = [
         {
           componentName: 'Input',
           name: 'a2',
@@ -235,6 +174,7 @@ const ParameterConfigMainList = () => {
           valuePropName: 'checked',
           disabled: state.handleModal.disable,
         },
+        // TODO 图标功能未做（此页面交互功能未作）
         {
           componentName: 'HideInput',
           name: 'ii',
@@ -243,7 +183,12 @@ const ParameterConfigMainList = () => {
             return (
               <div
                 className="mb-5"
-                onClick={() => handleIconState({ visible: true })}
+                onClick={() => {
+                  setState((prev) => {
+                    prev.iconModal.visible = false
+                    return prev
+                  })
+                }}
               >
                 <Avatar
                   className="pointer"
@@ -271,9 +216,10 @@ const ParameterConfigMainList = () => {
           placeholder: '请输入备注',
           disabled: state.handleModal.disable,
         },
-      ],
+      ]
+      return prev
     })
-  }, [state.handleModal.disable, state.iconModal.src])
+  }, [setState, state.handleModal.disable, state.iconModal.src])
 
   /**
    * @Description 设置卡片操作按钮数据
@@ -281,23 +227,23 @@ const ParameterConfigMainList = () => {
    * @Date 2020-08-07 15:32:06
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_CARD_HANDLE_BUTTON_LIST,
-      payload: [
+    setState({
+      cardHandleButtonList: [
         {
           name: '新增',
           clickConfirm: () => {
-            handleModalState({
-              visible: true,
-              disable: false,
-              id: '',
-              title: '新增参数配置',
+            setState((prev) => {
+              prev.handleModal.visible = true
+              prev.handleModal.disable = false
+              prev.handleModal.id = ''
+              prev.handleModal.title = '新增参数配置'
+              return prev
             })
           },
         },
       ],
     })
-  }, [])
+  }, [setState])
 
   /**
    * @Description 设置表格列表表头数据
@@ -305,11 +251,10 @@ const ParameterConfigMainList = () => {
    * @Date 2020-08-07 15:24:52
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_TABLE_COLUMNS_LIST,
-      payload: [
+    setState({
+      tableColumnsList: [
         {
-          width: 60,
+          width: 80,
           title: '序号',
           dataIndex: 'sortSeq',
         },
@@ -343,16 +288,18 @@ const ParameterConfigMainList = () => {
           fixed: 'right',
           width: 170,
           render: (value: number, record: any) => {
-            const operatingData = []
+            const operatingData: TableOperateButtonType[] = []
             // 查看
             operatingData.push({
               name: '查看',
+              type: 'lookOver',
               onClick: () => {
-                handleModalState({
-                  visible: true,
-                  disable: true,
-                  id: record.id,
-                  title: '查看参数配置',
+                setState((prev) => {
+                  prev.handleModal.visible = true
+                  prev.handleModal.disable = true
+                  prev.handleModal.id = record.id
+                  prev.handleModal.title = '查看参数配置'
+                  return prev
                 })
               },
               svg: 'table_see.png',
@@ -360,12 +307,14 @@ const ParameterConfigMainList = () => {
             // 编辑
             operatingData.push({
               name: '编辑',
+              type: 'edit',
               onClick: () => {
-                handleModalState({
-                  visible: true,
-                  disable: false,
-                  id: record.id,
-                  title: '编辑参数配置',
+                setState((prev) => {
+                  prev.handleModal.visible = true
+                  prev.handleModal.disable = false
+                  prev.handleModal.id = record.id
+                  prev.handleModal.title = '编辑参数配置'
+                  return prev
                 })
               },
               svg: 'table_edit.png',
@@ -373,6 +322,7 @@ const ParameterConfigMainList = () => {
             // 删除
             operatingData.push({
               name: '删除',
+              type: 'delete',
               onClick: () => {
                 if (layoutTableRef.current) {
                   handleRowDelete(
@@ -415,7 +365,7 @@ const ParameterConfigMainList = () => {
         },
       ],
     })
-  }, [])
+  }, [setState])
 
   return (
     <>
@@ -436,19 +386,30 @@ const ParameterConfigMainList = () => {
       />
       <LayoutFormModal
         ref={layoutFormModalRef}
-        onCancel={() => handleModalState({ visible: false })}
+        onCancel={() => {
+          setState((prev) => {
+            prev.handleModal.visible = false
+            return prev
+          })
+        }}
         {...state.handleModal}
       />
       <IconSelectionModal
         {...state.iconModal}
-        onCancel={() => handleIconState({ visible: false })}
+        onCancel={() => {
+          setState((prev) => {
+            prev.iconModal.visible = false
+            return prev
+          })
+        }}
         onConfirm={(item) => {
           layoutFormModalRef.current?.setFormValues({
             ii: item.src,
           })
-          handleIconState({
-            visible: false,
-            src: item.src,
+          setState((prev) => {
+            prev.iconModal.visible = false
+            prev.iconModal.src = item.src
+            return prev
           })
         }}
       />

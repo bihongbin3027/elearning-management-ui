@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-06-23 10:46:52
  * @LastEditors bihongbin
- * @LastEditTime 2020-09-19 15:55:00
+ * @LastEditTime 2020-11-11 14:25:57
  */
 
 import React, {
@@ -11,6 +11,7 @@ import React, {
   forwardRef,
   useState,
   useMemo,
+  useEffect,
 } from 'react'
 import {
   Row,
@@ -24,20 +25,18 @@ import {
   Spin,
   Radio,
   Checkbox,
+  TreeSelect,
 } from 'antd'
+import moment from 'moment'
 import { RowProps } from 'antd/es/row'
 import { ColProps } from 'antd/es/col'
+import { DataNode } from 'rc-tree-select/es/interface'
 import { FormProps, Rule } from 'antd/es/form'
 import { FieldData } from 'rc-field-form/es/interface'
 import { v4 as uuidV4 } from 'uuid'
 import _ from 'lodash'
 import { AnyObjectType, SelectType } from '@/typings'
 
-// 下拉菜单类型
-interface SelectDataType {
-  label: string
-  value: string | number
-}
 type remoteValueType = string | undefined
 type remotePromiseType = (value: remoteValueType) => Promise<SelectType[]>
 
@@ -45,7 +44,7 @@ interface UnionType {
   componentName: 'Input' | 'Select'
   name: string // 字段名
   placeholder?: string
-  selectData?: SelectDataType[]
+  selectData?: SelectType[]
 }
 
 // 表单参数配置
@@ -65,6 +64,7 @@ export interface FormListType {
     | 'Switch'
     | 'Radio'
     | 'Checkbox'
+    | 'TreeSelect'
     | 'Union'
   name?: string // 字段名
   label?: string | React.ReactNode // 标题
@@ -99,7 +99,9 @@ export interface FormListType {
   }
   rows?: number // TextArea高度
   rules?: Rule[] // 表单验证
-  selectData?: SelectDataType[] // 下拉菜单数据
+  selectIsHideAll?: boolean // 下拉菜单是否显示“全部”选项 true-隐藏下拉菜单全部选项
+  selectData?: SelectType[] // 下拉菜单数据
+  treeSelectData?: DataNode[] // 树下拉菜单数据
   render?: () => React.ReactElement // 动态渲染插入额外元素
 }
 
@@ -127,7 +129,7 @@ const { RangePicker } = DatePicker
 
 const GenerateForm = (props: GenerateFormProp, ref: any) => {
   const [form] = Form.useForm()
-  const {
+  let {
     className,
     formConfig,
     rowGridConfig,
@@ -136,7 +138,9 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
     render,
   } = props
   const [remoteFetching, setRemoteFetching] = useState(false) // 远程搜索loading
-  const [remoteData, setRemoteData] = useState<SelectType[]>([]) // 远程搜索数据结果
+  const [remoteData, setRemoteData] = useState<{ [key: string]: SelectType[] }>(
+    {},
+  ) // 远程搜索数据结果
 
   /**
    * @Description 缓存生成的随机id
@@ -152,13 +156,18 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
    */
   const fetchRemote = (
     value: remoteValueType,
+    fieldName: string | undefined,
     remoteApi?: remotePromiseType,
   ) => {
     if (remoteApi) {
       setRemoteFetching(true)
       remoteApi(value).then((res) => {
         setRemoteFetching(false)
-        setRemoteData(res)
+        if (fieldName) {
+          setRemoteData({
+            [fieldName]: res,
+          })
+        }
       })
     }
   }
@@ -181,7 +190,7 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
         return (
           <Select disabled={item.disabled} placeholder={m.placeholder}>
             {m.selectData
-              ? m.selectData.map((s: SelectDataType, k: number) => (
+              ? m.selectData.map((s: SelectType, k: number) => (
                   <Option value={s.value} key={k}>
                     {s.label}
                   </Option>
@@ -280,17 +289,19 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
               showSearch
               // 当获取焦点查询全部
               onFocus={() =>
-                fetchRemote(undefined, item.remoteConfig?.remoteApi)
+                fetchRemote(undefined, item.name, item.remoteConfig?.remoteApi)
               }
               onSearch={(value) =>
-                fetchRemote(value, item.remoteConfig?.remoteApi)
+                fetchRemote(value, item.name, item.remoteConfig?.remoteApi)
               }
             >
-              {remoteData.map((s: SelectType, k) => (
-                <Option value={s.value} key={k}>
-                  {s.label}
-                </Option>
-              ))}
+              {item.name && remoteData[item.name]
+                ? remoteData[item.name].map((s: SelectType, k) => (
+                    <Option value={s.value} key={k}>
+                      {s.label}
+                    </Option>
+                  ))
+                : null}
             </Select>
           )
           break
@@ -346,6 +357,18 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
             </Checkbox.Group>
           )
           break
+        case 'TreeSelect':
+          childForm = (
+            <TreeSelect
+              disabled={item.disabled}
+              style={{ width: '100%' }}
+              dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+              treeData={item.treeSelectData}
+              placeholder={item.placeholder}
+              treeDefaultExpandAll
+            />
+          )
+          break
         case 'Union':
           let width: string
           let len = 0
@@ -396,6 +419,7 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
         'render',
         'rangePickerPlaceholder',
         'visible',
+        'selectIsHideAll',
       ])
       // Form.Item内有多个表单（Union类型），如果有设置name移除name
       if (item.componentName === 'Union') {
@@ -452,6 +476,38 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
       return form.getFieldsValue()
     },
   }))
+
+  /**
+   * @Description 设置全局表单默认值
+   * @Author bihongbin
+   * @Date 2020-10-14 14:25:54
+   */
+  useEffect(() => {
+    if (list) {
+      let obj: AnyObjectType = {}
+      for (let item of list) {
+        // 序号
+        if (item.name === 'sortSeq') {
+          obj[item.name] = 10
+        }
+        // 生效时间
+        if (item.name === 'startTime') {
+          obj[item.name] = moment()
+        }
+        // 失效时间
+        if (item.name === 'endTime') {
+          obj[item.name] = moment('20991231')
+        }
+        // 远程搜索默认查询
+        if (item.componentName === 'RemoteSearch') {
+          if (item.remoteConfig && item.remoteConfig.remoteApi) {
+            fetchRemote(undefined, item.name, item.remoteConfig.remoteApi)
+          }
+        }
+      }
+      form.setFieldsValue(obj)
+    }
+  }, [form, list])
 
   return (
     <>

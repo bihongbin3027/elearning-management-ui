@@ -1,103 +1,56 @@
-import React, { useReducer, useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { Modal, Row, Button, Col, Divider, Spin } from 'antd'
+import useSetState from '@/hooks/useSetState'
 import { AnyObjectType } from '@/typings'
+import Empty from '@/components/Empty'
 import { SxyButton } from '@/style/module/button'
+import { getUserRole } from '@/api/systemManage/user'
 
 interface PropType {
   visible: boolean
   width?: number
   title: string
-  id?: string
+  id: string
   onCancel: () => void
 }
 
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_LOADING = '[SetLoading Action]',
-  SET_ROLE_CHECK_LIST = '[SetRoleCheckList Action]',
-}
-
-const stateValue = {
-  loading: false, // 弹窗全局显示loading
-  roleCheckList: [] as AnyObjectType[], // 角色详情数据
+interface StateType {
+  loading: boolean
+  roleCheckList: AnyObjectType[]
 }
 
 const RoleDetailsView = (props: PropType) => {
-  const [state, dispatch] = useReducer<
-    (state: StateType, action: Action) => StateType
-  >((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_LOADING: // 设置全局显示loading
-        return {
-          ...state,
-          loading: action.payload,
-        }
-      case ActionType.SET_ROLE_CHECK_LIST: // 设置角色详情数据
-        return {
-          ...state,
-          roleCheckList: action.payload,
-        }
-      default:
-        return state
-    }
-  }, stateValue)
+  const [state, setState] = useSetState<StateType>({
+    loading: false, // 弹窗全局显示loading
+    roleCheckList: [], // 角色详情数据
+  })
 
   /**
-   * @Description 设置角色详情数据
+   * @Description 初始化数据
    * @Author bihongbin
    * @Date 2020-08-05 16:21:49
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_ROLE_CHECK_LIST,
-      payload: [
-        {
-          name: '华旅云创科技有限公司',
-          children: [
-            {
-              name: '常规角色',
-              children: [
-                {
-                  name: '总经办',
-                },
-                {
-                  name: '财务管理员',
-                },
-                {
-                  name: '系统管理员',
-                },
-              ],
-            },
-          ],
-        },
-        {
-          name: '华旅云创科技有限公司',
-          children: [
-            {
-              name: '常规角色',
-              children: [
-                {
-                  name: '总经办',
-                },
-                {
-                  name: '财务管理员',
-                },
-                {
-                  name: '系统管理员',
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    })
-  }, [])
+    const getInit = async () => {
+      if (props.id) {
+        setState({
+          loading: true,
+        })
+        try {
+          const result = await getUserRole(props.id)
+          if (result.data.content.length) {
+            setState({
+              roleCheckList: result.data.content,
+            })
+          }
+        } catch (error) {}
+        setState({
+          loading: false,
+        })
+      }
+    }
+    getInit()
+  }, [props.id, setState])
 
   return (
     <Modal
@@ -112,35 +65,39 @@ const RoleDetailsView = (props: PropType) => {
       <Spin spinning={state.loading}>
         <Row justify="center">
           <Col span={23}>
-            {state.roleCheckList.map((item, index) => (
-              <div key={index}>
-                <div className="mb-4">
-                  <Button className="is-btn-link" type="link">
-                    {item.name}
-                  </Button>
-                </div>
-                {item.children.map((c: AnyObjectType, d: number) => (
-                  <div key={d}>
-                    <div className="mb-3">{c.name}</div>
-                    <Row gutter={[20, 10]}>
-                      {c.children.map((x: AnyObjectType, m: number) => (
-                        <Col span={12} key={m}>
-                          <SxyButton
-                            mode="dust"
-                            size="large"
-                            border={false}
-                            block
-                          >
-                            {x.name}
-                          </SxyButton>
-                        </Col>
-                      ))}
-                    </Row>
+            {state.roleCheckList.length ? (
+              state.roleCheckList.map((item, index) => (
+                <div key={index}>
+                  <div className="mb-4">
+                    <Button className="is-btn-link" type="link">
+                      {item.cname}
+                    </Button>
                   </div>
-                ))}
-                <Divider className="mt-7 mb-5" />
-              </div>
-            ))}
+                  {item.categoryList.map((c: AnyObjectType, d: number) => (
+                    <div key={d}>
+                      <div className="mb-3">{c.categoryName}</div>
+                      <Row gutter={[20, 10]}>
+                        {c.roleList.map((x: AnyObjectType, m: number) => (
+                          <Col span={12} key={m}>
+                            <SxyButton
+                              mode="dust"
+                              size="large"
+                              border={false}
+                              block
+                            >
+                              {x.roleCname}
+                            </SxyButton>
+                          </Col>
+                        ))}
+                      </Row>
+                    </div>
+                  ))}
+                  <Divider className="mt-7 mb-5" />
+                </div>
+              ))
+            ) : (
+              <Empty outerHeight={300} />
+            )}
           </Col>
         </Row>
         <Row className="mt-10 mb-5" justify="center">

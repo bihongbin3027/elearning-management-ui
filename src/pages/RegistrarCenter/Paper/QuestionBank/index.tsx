@@ -190,7 +190,7 @@ const QuestionBankMainList = () => {
         {
           title: '编号',
           dataIndex: 'id',
-          width: 60,
+          width: 80,
         },
         {
           title: '题库名称',

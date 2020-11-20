@@ -12,12 +12,8 @@ import BraftEditor, {
 } from 'braft-editor'
 import { ContentUtils } from 'braft-utils'
 import 'braft-editor/dist/index.css'
+import { EditorCallType } from '@/components/Editor/interface'
 import { EditorBox } from '@/components/Editor/style'
-import { AnyObjectType } from '@/typings'
-
-export interface EditorCallType {
-  getEditorObject: () => AnyObjectType
-}
 
 type ReducerType = (state: StateType, action: Action) => StateType
 
@@ -26,13 +22,16 @@ interface Action {
   payload: any
 }
 
-type StateType = typeof stateValue
+interface StateType {
+  controls: ControlType[]
+  editorValue: any
+}
 
 enum ActionType {
   SET_EDITOR_VALUE = '[SetEditorValue Action]',
 }
 
-const stateValue = {
+const stateValue: StateType = {
   controls: [
     'undo',
     'redo',
@@ -67,7 +66,7 @@ const stateValue = {
     'separator',
     'separator',
     'clear',
-  ] as ControlType[],
+  ],
   editorValue: BraftEditor.createEditorState(null), // 编辑器实例（暂时没用到）
 }
 

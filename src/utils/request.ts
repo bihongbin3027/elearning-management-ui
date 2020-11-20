@@ -1,13 +1,9 @@
-import axios, { AxiosRequestConfig, AxiosError, AxiosResponse } from 'axios'
+import axios, { AxiosRequestConfig, AxiosError } from 'axios'
 import { message } from 'antd'
 import store from '@/store'
+import * as authTypes from '@/store/module/auth/types'
 import { GlobalConstant } from '@/config'
-
-// interface ResponseData<T> {
-//   code: number
-//   data: T
-//   message: string
-// }
+import { AjaxResultType } from '@/typings'
 
 axios.defaults.headers = {
   'Content-Type': 'application/json;charset=utf-8',
@@ -20,30 +16,11 @@ axios.defaults.baseURL = GlobalConstant.baseUrl
  * @Date: 2020-05-26 14:08:34
  */
 axios.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config) => {
     const {
-      auth: { authToken, tokenType },
-    } = store.getState() as any
-    const accessToken: string =
-      authToken && authToken
-        ? `${tokenType} ${authToken}`
-        : GlobalConstant.accessToken || ''
-    if (accessToken) {
-      config.headers.Authorization = accessToken
-    }
-    // http状态码
-    config.validateStatus = (status) => {
-      const { codeMessage } = GlobalConstant
-      type CodeType = typeof codeMessage
-      type CodeKey = keyof CodeType
-      if (status >= 200 && status < 300) {
-        return true
-      } else {
-        message.destroy() // 防止弹出多个提示
-        message.warn(codeMessage[String(status) as CodeKey] || '请求错误', 1.5)
-        return false
-      }
-    }
+      auth: { authToken },
+    } = store.getState()
+    config.headers.token = authToken ? authToken : ''
     return config
   },
   (error: AxiosError) => {
@@ -57,25 +34,25 @@ axios.interceptors.request.use(
  * @Date: 2020-05-26 14:08:19
  */
 axios.interceptors.response.use(
-  (response: AxiosResponse) => {
-    const { gatewayUrl } = GlobalConstant
-    const total = response.headers['x-total-count'] // 分页总条数
-    if (total) {
-      response.data.total = parseInt(total) // 返回结果注入分页参数
+  (response) => {
+    const newToken: string = response.headers['newToken']
+    if (newToken) {
+      console.log('newToken：', newToken)
+      store.dispatch({
+        type: authTypes.SET_AUTH_TOKEN,
+        payload: newToken,
+      })
     }
-    if (response.config.url) {
-      // 如果是新系统接口
-      if (response.config.url.indexOf(gatewayUrl.ibfapi) !== -1) {
-        if (response.data.code === 1) {
-          return response.data
-        } else {
-          message.destroy() // 防止弹出多个提示
-          message.warn(response.data.message, 1.5)
-          return Promise.reject(response.data.message)
-        }
-      } else {
-        return response.data
+    if (response.data.code === 1) {
+      return response
+    } else {
+      // token失效
+      if (response.data.code === 401) {
+        window.location.href = '/#login'
       }
+      message.destroy() // 防止弹出多个提示
+      message.warn(response.data.msg, 1.5)
+      return Promise.reject(response)
     }
   },
   (error: AxiosError) => {
@@ -89,5 +66,12 @@ axios.interceptors.response.use(
  * @Date: 2020-05-26 14:08:00
  */
 export default function request<T>(options: AxiosRequestConfig) {
-  return axios.request<T>(options)
+  return new Promise<AjaxResultType<T>>((resolve, reject) => {
+    axios
+      .request(options)
+      .then((res) => {
+        resolve(res.data)
+      })
+      .catch((error) => reject(error))
+  })
 }

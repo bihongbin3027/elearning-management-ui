@@ -21,7 +21,7 @@ import LayoutFormModal, {
 } from '@/components/LayoutFormModal'
 import { SxyButton } from '@/style/module/button'
 import { AnyObjectType } from '@/typings'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import { handleRowDelete } from '@/utils'
 import { SxyBadge } from '@/style/module/badge'
 import ResetPasswordModal from '@/components/ResetPasswordModal'
@@ -283,6 +283,8 @@ const ClassRoster = () => {
     ) {
       Modal.confirm({
         title: '温馨提示',
+        width: 360,
+        className: 'confirm-modal',
         content:
           '系统只支持给已关注华旅云创的学员发送公告通知。本次您勾选了1位学员，其中1位学员已关注华旅云创',
         okText: '知道啦',
@@ -379,10 +381,11 @@ const ClassRoster = () => {
         fixed: 'right',
         width: 135,
         render: (value: number, record: any) => {
-          const operatingData = []
+          const operatingData: TableOperateButtonType[] = []
           // 编辑
           operatingData.push({
             name: '编辑',
+            type: 'edit',
             onClick: () => {
               handleModalState({
                 visible: true,
@@ -395,6 +398,7 @@ const ClassRoster = () => {
           // 删除
           operatingData.push({
             name: '删除',
+            type: 'delete',
             onClick: () => {
               handleRowDelete([record.id], deleteBasicQtyList, () =>
                 mainListTableRef.current?.getTableList(),

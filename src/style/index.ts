@@ -1,7 +1,8 @@
 import { createGlobalStyle } from 'styled-components'
 import { ThemesDefault } from '@/style/theme'
 
-const confirmModalIcon = require('../assets/icon/popup_abnorma.png')
+const popupWarn = require('../assets/icon/popup_abnorma.png')
+const popupSuccess = require('../assets/icon/popup_success.png')
 
 export const GlobalStyle = createGlobalStyle`
 
@@ -204,6 +205,16 @@ export const GlobalStyle = createGlobalStyle`
     margin-bottom: 2.5rem !important;
   }
 
+  /* 更改表单自动完成样式 */
+  .login-form {
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+      box-shadow: 0 0 0px 1000px #fff inset;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+  }
+
   /* 普通文本hover变主题色 */
   .link-text-hover {
     cursor: pointer;
@@ -222,6 +233,10 @@ export const GlobalStyle = createGlobalStyle`
 
   .text-desc {
     color: ${ThemesDefault['@color-text-description']};
+  }
+
+  .text-error {
+    color: ${ThemesDefault['@color-text-error']};
   }
 
   .font-12 {
@@ -286,6 +301,9 @@ export const GlobalStyle = createGlobalStyle`
         padding-top: 1px;
         padding-bottom: 0;
       }
+    }
+    &.shaded {
+      box-shadow: 0 8px 15px 0 rgba(48,116,255,0.10);
     }
     /* 隐藏表格头部 */
     &.table-header-hidden {
@@ -372,6 +390,37 @@ export const GlobalStyle = createGlobalStyle`
           .ant-select-selector {
             padding-left: 0;
           }
+        }
+      }
+    }
+    /* 卡片内容垂直水平居中 */
+    &.card-centered {
+      height: 100%;
+      .ant-card-body {
+        display: flex;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+    /* 卡片hover增加虚线效果 */
+    &.card-hover {
+      &:hover {
+        border: 1px dashed #5860F8;
+      }
+    }
+  }
+
+  /* Tabs */
+  .ant-tabs {
+    &.card-header-rightTop-tabs {
+      .ant-tabs-nav {
+        &:before {
+          display: none;
+        }
+        .ant-tabs-tab {
+          padding-top: 6px;
+          padding-bottom: 6px;
         }
       }
     }
@@ -719,6 +768,7 @@ export const GlobalStyle = createGlobalStyle`
           }
         }
       }
+      margin-bottom: 6px;
       .btn-reset {
         background-color: ${ThemesDefault['@color-bg-track']};
         border-color: ${ThemesDefault['@color-bg-track']};
@@ -731,6 +781,17 @@ export const GlobalStyle = createGlobalStyle`
     top: 66px;
     /* confirm类型 */
     &.confirm-modal {
+      &.popup-success {
+        .ant-modal-content {
+          .ant-modal-body {
+            .ant-modal-confirm-body {
+              > .anticon {
+                background-image: ${() => 'url(' + popupSuccess + ')'};
+              }
+            }
+          }
+        }
+      }
       .ant-modal-content {
         .ant-modal-body {
           padding-top: 40px;
@@ -742,7 +803,7 @@ export const GlobalStyle = createGlobalStyle`
               width: 60px;
               height: 60px;
               margin-right: 0;
-              background-image: ${() => 'url(' + confirmModalIcon + ')'};
+              background-image: ${() => 'url(' + popupWarn + ')'};
               background-repeat: no-repeat;
               background-position: 0 0;
               background-size: contain;
@@ -761,6 +822,55 @@ export const GlobalStyle = createGlobalStyle`
             float: none;
             margin-top: 20px;
             text-align: center;
+          }
+        }
+      }
+    }
+    /* 弹窗里面的文件管理 */
+    &.file-selection-modal {
+      .file-container {
+        max-height: 490px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 10px;
+      }
+      .file-items-wrap {
+        > .ant-col {
+          flex: 0 0 20%;
+          max-width: 20%;
+          .file-items {
+            height: 130px;
+            &.file-items-selected {
+              border-color: ${ThemesDefault['@color-border-primary']};
+              overflow: hidden;
+              &:before {
+                content: '';
+                width: 0;
+                height: 0;
+                position: absolute;
+                right: 0;
+                top: 0;
+                border-width: 12px;
+                border-color: ${ThemesDefault['@color-border-primary']} ${
+  ThemesDefault['@color-border-primary']
+} transparent transparent;
+                border-style: solid;
+              }
+              &:after {
+                content: '';
+                width: 7px;
+                height: 5px;
+                position: absolute;
+                right: 3px;
+                top: 4px;
+                transform: rotate(-45deg);
+                border-left: 1px solid #fff;
+                border-bottom: 1px solid #fff;
+              }
+            }
+            .file-img {
+              height: 80px;
+            }
           }
         }
       }
@@ -864,6 +974,22 @@ export const GlobalStyle = createGlobalStyle`
     }
   }
 
+  /* 面包屑 */
+  .ant-breadcrumb {
+    &.breadcrumb-pointer {
+      > span {
+        &:last-child {
+          .ant-breadcrumb-link {
+            cursor: default;
+          }
+        }
+      }
+      .ant-breadcrumb-link {
+        cursor: pointer;
+      }
+    }
+  }
+
   /* 标签 */
   .ant-tag {
     &.tag-size-middle {
@@ -894,6 +1020,14 @@ export const GlobalStyle = createGlobalStyle`
     }
   }
 
+  /* 排版 */
+  .ant-typography {
+    /* 无下边距 */
+    &.mb-none {
+      margin-bottom: 0;
+    }
+  }
+
   /* 按钮 */
   .ant-btn {
     &.button-color-normal {
@@ -904,6 +1038,7 @@ export const GlobalStyle = createGlobalStyle`
       height: auto;
       padding: 0;
       border: 0 none;
+      box-shadow: none;
     }
     /* 文本按钮图标 */
     &.btn-text-icon {
@@ -912,6 +1047,22 @@ export const GlobalStyle = createGlobalStyle`
       i {
         margin-right: 8px;
       }
+    }
+  }
+  /* 表格操作按钮背景 */
+  .table-handle-btn-bg {
+    width: 30px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0 none;
+    outline: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: ${ThemesDefault['@color-bg-grey']};
+    &:hover {
+      background-color: ${ThemesDefault['@color-bg-track']};
     }
   }
   /* 自定义button */
@@ -959,19 +1110,31 @@ export const GlobalStyle = createGlobalStyle`
 
   /* 树 */
   .ant-tree {
+    .ant-tree-treenode-disabled {
+      .ant-tree-node-content-wrapper {
+        color: ${ThemesDefault['@color-text-disabled']};
+      }
+    }
     .ant-tree-checkbox-inner,
     .ant-tree-node-content-wrapper {
       border-radius: 2px;
     }
     .tree-handle-box {
+      display: flex;
       visibility: hidden;
+      margin-right: 5px;
+      align-items: center;
+      i {
+        margin-left: 5px;
+      }
     }
     .ant-tree-node-content-wrapper {
-      &:hover {
+      &:hover, &.ant-tree-node-selected {
         .tree-handle-box {
           visibility: visible;
         }
       }
+
     }
   }
 

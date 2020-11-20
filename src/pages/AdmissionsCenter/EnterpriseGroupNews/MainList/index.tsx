@@ -10,7 +10,7 @@ import LayoutFormModal, {
   LayoutFormModalListType,
 } from '@/components/LayoutFormModal'
 import { SxyButton } from '@/style/module/button'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import { SxyBadge } from '@/style/module/badge'
 import { AnyObjectType } from '@/typings'
 import LayoutTableModal from '@/components/LayoutTableModal'
@@ -258,10 +258,11 @@ const MainList = () => {
         fixed: 'right',
         width: 135,
         render: (value: number, record: AnyObjectType) => {
-          const operatingData = []
+          const operatingData: TableOperateButtonType[] = []
           // 查看
           operatingData.push({
             name: '查看',
+            type: 'lookOver',
             onClick: () => {
               handleModalState({
                 visible: true,
@@ -275,6 +276,7 @@ const MainList = () => {
           // 编辑
           operatingData.push({
             name: '编辑',
+            type: 'edit',
             onClick: () => {
               handleModalState({
                 visible: true,

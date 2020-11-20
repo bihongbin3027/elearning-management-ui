@@ -7,6 +7,7 @@ export enum ThemesDefault {
   '@color-text-warning' = '#faad14',
   '@color-text-description' = '#6a717f',
   '@color-text-normal' = '#878d99',
+  '@color-text-disabled' = '#8c8c8c',
   '@color-text-finish' = '#46d49f',
   '@color-text-primary' = '#5860f8',
   '@color-text-primary-hover' = '#828cff',

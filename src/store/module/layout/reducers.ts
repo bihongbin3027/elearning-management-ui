@@ -2,14 +2,21 @@ import { persistReducer } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
 import * as types from './types'
 
-const initialAuthState = {
-  billTypeSelectData: [], // 账单类型下拉菜单数据
+const initialAuthState: types.InitDictionaryType = {
+  companyData: [], // 公司数据
   openSider: false, // 左侧菜单展开收缩
   // 修改密码模态窗数据
   passwordModal: {
     visible: false,
     saveLoading: false,
   },
+  useLevelSelectList: [], // 系统管理-使用等级
+  orgCategorySelectList: [], // 系统管理-组织类型
+  dutyCategorySelectList: [], // 系统管理-工作岗位
+  appTypesSelectList: [], // 系统管理-应用类型
+  resourceClassSelectList: [], // 系统管理-资源分类
+  requestMethodSelectList: [], // 系统管理-请求方式
+  contentSelectList: [], // 系统管理-响应类型
 }
 
 const reducer = persistReducer<
@@ -28,6 +35,10 @@ const reducer = persistReducer<
           ...state,
           [action.payload.name]: action.payload.value,
         }
+      }
+      // 设置公司数据
+      case types.SET_ESTIMATES_COMPANY_SELECT_DATA: {
+        return { ...state, companyData: action.payload }
       }
       // 设置左侧菜单展开收缩
       case types.SET_LEFT_SIDER_OPEN: {

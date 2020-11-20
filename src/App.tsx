@@ -1,5 +1,5 @@
 import React from 'react'
-import { HashRouter as Router, Route, Switch } from 'react-router-dom'
+import { HashRouter, Route, Switch } from 'react-router-dom'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import { ThemeProvider } from 'styled-components'
@@ -8,11 +8,11 @@ import { ConfigProvider } from 'antd'
 import zhCN from 'antd/lib/locale-provider/zh_CN'
 import store, { persistor } from '@/store'
 import Layout from '@/pages/Layout'
-import Login from '@/pages/Login' // 旧登录页面
-import LoginNew from '@/pages/LoginNew' // 新登录页面
-
+import Login from '@/pages/Login'
 import { ThemesDefault } from '@/style/theme'
 import { GlobalStyle } from '@/style'
+
+import ComStyle from '@/style/comStyle'
 
 function App() {
   return (
@@ -21,13 +21,13 @@ function App() {
         <ThemeProvider theme={ThemesDefault}>
           <ConfigProvider locale={zhCN}>
             <GlobalStyle />
-            <Router>
+            <ComStyle />
+            <HashRouter>
               <Switch>
                 <Route path="/login" component={Login} />
-                <Route path="/login-new" component={LoginNew} />
-                <Route component={Layout} />
+                <Layout />
               </Switch>
-            </Router>
+            </HashRouter>
           </ConfigProvider>
         </ThemeProvider>
       </PersistGate>

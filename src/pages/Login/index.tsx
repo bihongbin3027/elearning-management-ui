@@ -1,488 +1,878 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { Form, Input, Button, Row, Col } from 'antd'
 import {
-  UserOutlined,
-  LockOutlined,
-  CheckCircleOutlined,
-} from '@ant-design/icons'
-import auth from '@/store/module/auth'
+  Row,
+  Col,
+  Typography,
+  Form,
+  Input,
+  Select,
+  // Checkbox,
+  Button,
+  Divider,
+  message,
+} from 'antd'
+import useSetState from '@/hooks/useSetState'
+import { SxyIcon } from '@/style/module/icon'
+import { SxyButton } from '@/style/module/button'
 import { RootStateType } from '@/store/rootReducer'
+import { GlobalConstant } from '@/config'
+import auth from '@/store/module/auth'
 import {
-  LoginCanvas,
-  LoginMain,
-  LoginFrom,
-  FormTitle,
-  CodeImg,
-  LoginFormStyle,
-} from './style'
+  passWordLogin,
+  smsRegister,
+  resetPassword,
+  getPhoneCode,
+  smsLogin,
+  msgCodeValidate,
+} from '@/api/layout'
+import { LoginView, LoginCard, LoginMain, LoginTab } from '@/pages/Login/style'
 
-type CanvasType = HTMLCanvasElement | null
+const { Text } = Typography
+const { Option } = Select
+
+export interface LoginFormRelevantType {
+  areaCode: string
+  mobilePhone: string
+  userName: string
+  msgCode: string
+  password: string
+  confirmPassword: string
+}
+
+export type MsgCodeType = 'SMS_LOGIN' | 'SMS_REGISTER' | 'SMS_RESET_PASSWD'
+
+interface StateType {
+  submitLoading: boolean
+  interfaceStatus: number
+  mainCard: {
+    method: number
+    list: { name: string }[]
+    passwordMode: boolean
+    autoCheckbox: boolean
+    readAgreement: boolean
+  }
+  retrieveCard: {
+    method: number
+    psBlock: boolean
+    psAgainBlock: boolean
+  }
+  verificationText: {
+    count: number
+    liked: boolean
+  }
+}
+
+const stateValue = {
+  submitLoading: false, // 提交按钮loading
+  interfaceStatus: 0, // 界面显示类型（0密码和验证码登录，1扫码登录，2找回密码，3注册）
+  // 密码和验证码登录页面状态
+  mainCard: {
+    method: 0, // 0密码登录，1验证码登录,
+    // tab
+    list: [{ name: '密码登录' }, { name: '验证码登录' }],
+    passwordMode: false, // 密码是否是明文
+    autoCheckbox: false, // 自动登录复选框
+    readAgreement: false, // 是否阅读用户使用协议
+  },
+  // 找回密码页面状态
+  retrieveCard: {
+    method: 0, // 0验证，1重设密码或注册
+    psBlock: false, // 密码
+    psAgainBlock: false, // 再次确认密码
+  },
+  // 验证码倒计时
+  verificationText: {
+    count: 120,
+    liked: true,
+  },
+}
 
 const Login = () => {
   const dispatchRedux = useDispatch()
-  const { loginLoading, verificationCode } = useSelector(
-    (state: RootStateType) => state.auth,
-  )
-  const canvasBgRef = useRef<CanvasType>(null)
-  const canvasCircleRef = useRef<CanvasType>(null)
-  const canvasErectRef = useRef<CanvasType>(null)
+  const { loginLoading } = useSelector((state: RootStateType) => state.auth)
+  const [form] = Form.useForm()
+  const verificationRef = useRef<number>() // 验证码时间戳
+  // 存储注册和找回密码的手机相关信息
+  const phoneAndCode = useRef({
+    areaCode: '',
+    mobilePhone: '',
+    msgCode: '',
+  })
+  const [state, setState] = useSetState<StateType>({
+    submitLoading: false, // 提交按钮loading
+    interfaceStatus: 0, // 界面显示类型（0密码和验证码登录，1扫码登录，2找回密码，3注册）
+    // 密码和验证码登录页面状态
+    mainCard: {
+      method: 0, // 0密码登录，1验证码登录,
+      // tab
+      list: [{ name: '密码登录' }, { name: '验证码登录' }],
+      passwordMode: false, // 密码是否是明文
+      autoCheckbox: false, // 自动登录复选框
+      readAgreement: false, // 是否阅读用户使用协议
+    },
+    // 找回密码页面状态
+    retrieveCard: {
+      method: 0, // 0验证，1重设密码或注册
+      psBlock: false, // 密码
+      psAgainBlock: false, // 再次确认密码
+    },
+    // 验证码倒计时
+    verificationText: {
+      count: 120,
+      liked: true,
+    },
+  })
 
   /**
-   * @Description 提交表单且数据验证成功后回调事件
+   * @Description 重置登录状态初始值
    * @Author bihongbin
-   * @Date 2020-05-27 14:10:45
+   * @Date 2020-08-27 15:50:36
    */
-  const handleFinish = async (values: any) => {
-    const { username, password, imgCode } = values
-    const params = {
-      grant_type: 'password',
-      uuid: verificationCode.uuid,
-      username,
-      password,
-      imgCode,
+  const resetLoginInitState = (type: number[]) => {
+    for (let item of type) {
+      // 重置密码和验证码登录状态值
+      if (item === 0) {
+        setState((prev) => {
+          prev.mainCard.method = 0
+          prev.mainCard.passwordMode = false
+          prev.mainCard.autoCheckbox = false
+          prev.mainCard.readAgreement = false
+          return prev
+        })
+        form.setFieldsValue({
+          mobilePhone: '',
+          userName: '',
+          msgCode: '',
+          password: '',
+          confirmPassword: '',
+        })
+      }
+      // 重置找回密码和注册状态值
+      if (item === 1) {
+        setState((prev) => {
+          prev.retrieveCard.method = 0
+          prev.retrieveCard.psBlock = false
+          prev.retrieveCard.psAgainBlock = false
+          return prev
+        })
+      }
     }
-    dispatchRedux(auth.actions.login(params))
+    // 重置验证码倒计时
+    resetVerificationCode()
+    clearInterval(verificationRef.current)
   }
 
   /**
-   * @Description 设置登陆页背景动画
+   * @Description 获取验证码
    * @Author bihongbin
-   * @Date 2020-05-27 12:00:56
+   * @Date 2020-08-27 17:01:36
    */
-  useEffect(() => {
-    const canvasBg = canvasBgRef.current
-    const canvasCircle = canvasCircleRef.current
-    const canvasErect = canvasErectRef.current
-    let init: () => void
-    if (canvasBg && canvasCircle && canvasErect) {
-      const canvas = [canvasBg, canvasCircle, canvasErect]
-      const config = {
-        circle: {
-          amount: 18,
-          layer: 3,
-          color: [157, 97, 207],
-          alpha: 0.3,
-        },
-        line: {
-          amount: 12,
-          layer: 3,
-          color: [255, 255, 255],
-          alpha: 0.3,
-        },
-        speed: 0.5,
-        angle: 20,
+  const getVerificationCode = async () => {
+    let mobilePhone = form.getFieldValue('mobilePhone')
+    if (!mobilePhone) {
+      message.warn('请输入您的手机号', 1.5)
+      return
+    }
+    if (!GlobalConstant.regular.iPhone.test(mobilePhone)) {
+      message.warn('请输入正确格式的手机号码', 1.5)
+      return
+    }
+    if (state.verificationText.liked) {
+      const params: {
+        mobilePhone: LoginFormRelevantType['mobilePhone']
+        type: MsgCodeType
+      } = {
+        mobilePhone,
+        type: 'SMS_LOGIN',
       }
-      const bgTx = canvasBg.getContext('2d')
-      const circleTx = canvasCircle.getContext('2d')
-      const erectTx = canvasErect.getContext('2d')
-      const M = window.Math
-      const degree = (config.angle / 360) * M.PI * 2
-      let circles: any[] = []
-      let lines: any[] = []
-      let wWidth: number
-      let wHeight: number
-      let timer: number
-
-      /**
-       * @Description 浏览器重绘之前调用指定的回调函数更新动画
-       * @Author bihongbin
-       * @Param {Function} callback 下一次重绘之前更新动画帧所调用的函数
-       * @Date 2020-05-27 12:38:51
-       */
-      const requestAnimationFrame =
-        window.requestAnimationFrame ||
-        window.webkitRequestAnimationFrame ||
-        function (callback) {
-          setTimeout(callback, 1000 / 60)
-        }
-
-      /**
-       * @Description 取消先前通过调用预定的动画帧请求
-       * @Author bihongbin
-       * @Param {Number} requestID 调用返回的ID值window.requestAnimationFrame()请求了回调
-       * @Date 2020-05-27 12:40:38
-       */
-      const cancelAnimationFrame =
-        window.cancelAnimationFrame ||
-        window.webkitCancelAnimationFrame ||
-        clearTimeout
-
-      /**
-       * @Description 设置canvas宽度和高度
-       * @Author bihongbin
-       * @Date 2020-05-27 11:59:25
-       */
-      const setCanvasHeight = () => {
-        wWidth =
-          document.body.clientWidth || document.documentElement.clientWidth
-        wHeight =
-          document.body.clientHeight || document.documentElement.clientHeight
-        canvas.forEach(function (item) {
-          item.width = wWidth
-          item.height = wHeight
+      // 验证码登录
+      if (state.interfaceStatus === 0 && state.mainCard.method === 1) {
+        params.type = 'SMS_LOGIN'
+      }
+      // 找回密码
+      if (state.interfaceStatus === 2) {
+        params.type = 'SMS_RESET_PASSWD'
+      }
+      // 注册
+      if (state.interfaceStatus === 3) {
+        params.type = 'SMS_REGISTER'
+      }
+      message.loading('请稍后..')
+      try {
+        const result = await getPhoneCode(params)
+        message.destroy()
+        message.success(result.msg, 1.5)
+        setState((prev) => {
+          prev.verificationText.liked = false
+          return prev
+        })
+        setTimeout(() => {
+          setState((prev) => {
+            prev.verificationText.count = state.verificationText.count - 1
+            return prev
+          })
+        }, 1000)
+      } catch (error) {
+        setState((prev) => {
+          prev.verificationText.liked = true
+          return prev
         })
       }
+    }
+  }
 
-      /**
-       * @Description 动画流星
-       * @Author bihongbin
-       * @Date 2020-05-27 12:33:04
-       */
-      const drawLine = (
-        x: number,
-        y: number,
-        width: number,
-        color: string,
-        alpha: number,
-      ) => {
-        if (erectTx) {
-          const endX = x + M.sin(degree) * width,
-            endY = y - M.cos(degree) * width,
-            gradient = erectTx.createLinearGradient(x, y, endX, endY)
-          gradient.addColorStop(
-            0,
-            'rgba(' +
-              color[0] +
-              ',' +
-              color[1] +
-              ',' +
-              color[2] +
-              ',' +
-              alpha +
-              ')',
-          )
-          gradient.addColorStop(
-            1,
-            'rgba(' +
-              color[0] +
-              ',' +
-              color[1] +
-              ',' +
-              color[2] +
-              ',' +
-              (alpha - 0.1) +
-              ')',
-          )
-          erectTx.beginPath()
-          erectTx.moveTo(x, y)
-          erectTx.lineTo(endX, endY)
-          erectTx.lineWidth = 3
-          erectTx.lineCap = 'round'
-          erectTx.strokeStyle = gradient
-          erectTx.stroke()
+  /**
+   * @Description 重置验证码倒计时
+   * @Author bihongbin
+   * @Date 2020-11-10 14:36:15
+   */
+  const resetVerificationCode = useCallback(() => {
+    setState({
+      verificationText: {
+        count: 120,
+        liked: true,
+      },
+    })
+  }, [setState])
+
+  /**
+   * @Description 账号和密码登录、验证码登录
+   * @Author bihongbin
+   * @Date 2020-08-27 14:32:32
+   */
+  const loginSubmit = async (values: LoginFormRelevantType) => {
+    try {
+      let result = { data: '' }
+      dispatchRedux(auth.actions.setLoginLoading(true))
+      // 账号和密码和验证码登录
+      if (state.interfaceStatus === 0) {
+        // 账号和密码登录
+        if (state.mainCard.method === 0) {
+          result = await passWordLogin({
+            userName: values.userName,
+            password: values.password,
+          })
         }
+        // 手机号和验证码登录
+        if (state.mainCard.method === 1) {
+          result = await smsLogin({
+            mobilePhone: values.mobilePhone,
+            msgCode: values.msgCode,
+          })
+        }
+        dispatchRedux(auth.actions.login(result.data))
       }
+    } catch (error) {
+      dispatchRedux(auth.actions.setLoginLoading(false))
+    }
+  }
 
-      /**
-       * @Description 动画圆
-       * @Author bihongbin
-       * @Date 2020-05-27 12:32:51
-       */
-      const drawCircle = (
-        x: number,
-        y: number,
-        radius: number,
-        color: string,
-        alpha: number,
-      ) => {
-        if (circleTx) {
-          const gradient = circleTx.createRadialGradient(x, y, radius, x, y, 0)
-          gradient.addColorStop(
-            0,
-            'rgba(' +
-              color[0] +
-              ',' +
-              color[1] +
-              ',' +
-              color[2] +
-              ',' +
-              alpha +
-              ')',
-          )
-          gradient.addColorStop(
-            1,
-            'rgba(' +
-              color[0] +
-              ',' +
-              color[1] +
-              ',' +
-              color[2] +
-              ',' +
-              (alpha - 0.1) +
-              ')',
-          )
-          circleTx.beginPath()
-          circleTx.arc(x, y, radius, 0, M.PI * 2, true)
-          circleTx.fillStyle = gradient
-          circleTx.fill()
-        }
+  /**
+   * @Description 找回密码、注册下一步
+   * @Author bihongbin
+   * @Date 2020-08-27 10:41:03
+   */
+  const findNextStepFinish = async (
+    values: Pick<LoginFormRelevantType, 'areaCode' | 'mobilePhone' | 'msgCode'>,
+  ) => {
+    setState({
+      submitLoading: true,
+    })
+    try {
+      let params: {
+        mobilePhone: LoginFormRelevantType['mobilePhone']
+        msgCode: LoginFormRelevantType['msgCode']
+        type: MsgCodeType
+      } = {
+        type: 'SMS_LOGIN',
+        mobilePhone: values.mobilePhone,
+        msgCode: values.msgCode,
       }
-
-      /**
-       * @Description 填充元素
-       * @Author bihongbin
-       * @Date 2020-05-27 12:32:03
-       */
-      const drawBack = () => {
-        if (bgTx) {
-          bgTx.clearRect(0, 0, wWidth, wHeight)
-          let gradient = []
-          gradient[0] = bgTx.createRadialGradient(
-            wWidth * 0.3,
-            wHeight * 0.1,
-            0,
-            wWidth * 0.3,
-            wHeight * 0.1,
-            wWidth * 0.9,
-          )
-          gradient[0].addColorStop(0, 'rgb(0, 26, 77)')
-          gradient[0].addColorStop(1, 'transparent')
-          bgTx.translate(wWidth, 0)
-          bgTx.scale(-1, 1)
-          bgTx.beginPath()
-          bgTx.fillStyle = gradient[0]
-          bgTx.fillRect(0, 0, wWidth, wHeight)
-          gradient[1] = bgTx.createRadialGradient(
-            wWidth * 0.1,
-            wHeight * 0.1,
-            0,
-            wWidth * 0.3,
-            wHeight * 0.1,
-            wWidth,
-          )
-          gradient[1].addColorStop(0, 'rgb(0, 150, 240)')
-          gradient[1].addColorStop(0.8, 'transparent')
-          bgTx.translate(wWidth, 0)
-          bgTx.scale(-1, 1)
-          bgTx.beginPath()
-          bgTx.fillStyle = gradient[1]
-          bgTx.fillRect(0, 0, wWidth, wHeight)
-          gradient[2] = bgTx.createRadialGradient(
-            wWidth * 0.1,
-            wHeight * 0.5,
-            0,
-            wWidth * 0.1,
-            wHeight * 0.5,
-            wWidth * 0.5,
-          )
-          gradient[2].addColorStop(0, 'rgb(40, 20, 105)')
-          gradient[2].addColorStop(1, 'transparent')
-          bgTx.beginPath()
-          bgTx.fillStyle = gradient[2]
-          bgTx.fillRect(0, 0, wWidth, wHeight)
-        }
+      // 找回密码
+      if (state.interfaceStatus === 2) {
+        params.type = 'SMS_RESET_PASSWD'
       }
-
-      /**
-       * @Description 动画运动计算
-       * @Author bihongbin
-       * @Date 2020-05-27 12:32:21
-       */
-      const animate = () => {
-        const sin = M.sin(degree),
-          cos = M.cos(degree)
-        if (circleTx && config.circle.amount > 0 && config.circle.layer > 0) {
-          circleTx.clearRect(0, 0, wWidth, wHeight)
-          for (let i = 0, len = circles.length; i < len; i++) {
-            let item = circles[i],
-              x = item.x,
-              y = item.y,
-              radius = item.radius,
-              speed = item.speed
-
-            if (x > wWidth + radius) {
-              x = -radius
-            } else if (x < -radius) {
-              x = wWidth + radius
-            } else {
-              x += sin * speed
-            }
-
-            if (y > wHeight + radius) {
-              y = -radius
-            } else if (y < -radius) {
-              y = wHeight + radius
-            } else {
-              y -= cos * speed
-            }
-
-            item.x = x
-            item.y = y
-            drawCircle(x, y, radius, item.color, item.alpha)
-          }
-        }
-        if (erectTx && config.line.amount > 0 && config.line.layer > 0) {
-          erectTx.clearRect(0, 0, wWidth, wHeight)
-          for (let j = 0, len = lines.length; j < len; j++) {
-            let item = lines[j],
-              x = item.x,
-              y = item.y,
-              width = item.width,
-              speed = item.speed
-            if (x > wWidth + width * sin) {
-              x = -width * sin
-            } else if (x < -width * sin) {
-              x = wWidth + width * sin
-            } else {
-              x += sin * speed
-            }
-            if (y > wHeight + width * cos) {
-              y = -width * cos
-            } else if (y < -width * cos) {
-              y = wHeight + width * cos
-            } else {
-              y -= cos * speed
-            }
-            item.x = x
-            item.y = y
-            drawLine(x, y, width, item.color, item.alpha)
-          }
-        }
-        timer = requestAnimationFrame(animate)
+      // 注册
+      if (state.interfaceStatus === 3) {
+        params.type = 'SMS_REGISTER'
       }
+      // 验证短信验证码是否正确
+      await msgCodeValidate(params)
+      setState({
+        submitLoading: false,
+      })
+      phoneAndCode.current = values
+      setState((prev) => {
+        prev.retrieveCard.method = 1
+        return prev
+      })
+    } catch (error) {
+      setState({
+        submitLoading: false,
+      })
+    }
+  }
 
-      /**
-       * @Description 创建动画块元素
-       * @Author bihongbin
-       * @Date 2020-05-27 12:31:01
-       */
-      const createItem = () => {
-        circles = []
-        lines = []
-        if (config.circle.amount > 0 && config.circle.layer > 0) {
-          for (var i = 0; i < config.circle.amount / config.circle.layer; i++) {
-            for (var j = 0; j < config.circle.layer; j++) {
-              circles.push({
-                x: M.random() * wWidth,
-                y: M.random() * wHeight,
-                radius: M.random() * (20 + j * 5) + (20 + j * 5),
-                color: config.circle.color,
-                alpha: M.random() * 0.2 + (config.circle.alpha - j * 0.1),
-                speed: config.speed * (1 + j * 0.5),
+  /**
+   * @Description 找回密码-重置密码
+   * @Author bihongbin
+   * @Date 2020-08-27 10:57:32
+   */
+  const resetAndRetrieveFinish = async (
+    values: Pick<LoginFormRelevantType, 'password' | 'confirmPassword'>,
+  ) => {
+    setState({
+      submitLoading: true,
+    })
+    try {
+      const params = {
+        mobilePhone: phoneAndCode.current.mobilePhone,
+        msgCode: phoneAndCode.current.msgCode,
+        password: values.password,
+      }
+      // 重置密码
+      if (state.interfaceStatus === 2) {
+        await resetPassword(params)
+        message.success('重置密码成功', 1.5)
+      }
+      // 注册
+      if (state.interfaceStatus === 3) {
+        await smsRegister(params)
+        message.success('注册成功', 1.5)
+      }
+      setState({
+        submitLoading: false,
+      })
+      resetLoginInitState([0, 1])
+      // 重回账号密码登录界面
+      setState({
+        interfaceStatus: 0,
+      })
+    } catch (error) {
+      setState({
+        submitLoading: false,
+      })
+    }
+  }
+
+  /**
+   * @Description 渲染登录方式
+   * @Author bihongbin
+   * @Date 2020-08-26 16:05:55
+   */
+  const renderLoginMethod = () => {
+    // 手机区号
+    const areaCode = (
+      <Form.Item className="form-item-border-bottom" name="areaCode">
+        <Select bordered={false}>
+          <Option value="86">中国 +86</Option>
+        </Select>
+      </Form.Item>
+    )
+    // 手机号
+    const phoneNumber = (
+      <Form.Item
+        name="mobilePhone"
+        rules={[
+          () => ({
+            validator(rule, value) {
+              if (!value) {
+                return Promise.reject('请输入您的手机号')
+              }
+              if (!GlobalConstant.regular.iPhone.test(value)) {
+                return Promise.reject('请输入正确格式的手机号码')
+              }
+              return Promise.resolve()
+            },
+          }),
+        ]}
+      >
+        <Input placeholder="请输入您的手机号" maxLength={11} />
+      </Form.Item>
+    )
+    // 账号
+    const accountNumber = (
+      <Form.Item
+        name="userName"
+        rules={[
+          {
+            required: true,
+            message: '请输入您的账号',
+          },
+        ]}
+      >
+        <Input placeholder="请输入您的账号" maxLength={16} />
+      </Form.Item>
+    )
+    // 验证码
+    const verificationCode = (
+      <>
+        <Form.Item
+          name="msgCode"
+          rules={[
+            {
+              required: true,
+              message: '请输入您的验证码',
+            },
+          ]}
+        >
+          <Input type="text" placeholder="请输入您的验证码" maxLength={6} />
+        </Form.Item>
+        <div className="password-code">
+          <SxyButton
+            type="button"
+            mode={state.verificationText.liked ? 'primary' : 'dust'}
+            border={state.verificationText.liked ? true : false}
+            onClick={getVerificationCode}
+          >
+            {state.verificationText.liked
+              ? '获取验证码'
+              : `${state.verificationText.count}秒后获取`}
+          </SxyButton>
+        </div>
+      </>
+    )
+    // 去登录状态页面
+    const goAndLand = (
+      <Button
+        className="is-btn-link font-12"
+        type="link"
+        onClick={() => {
+          resetLoginInitState([0, 1])
+          setState({
+            interfaceStatus: 0,
+          })
+        }}
+      >
+        去登陆
+      </Button>
+    )
+    const register = (
+      <Button
+        className="is-btn-link font-12"
+        type="link"
+        onClick={() => {
+          resetLoginInitState([0])
+          setState({
+            interfaceStatus: 3,
+          })
+        }}
+      >
+        免费注册
+      </Button>
+    )
+    // 密码和验证码登录
+    if (state.interfaceStatus === 0) {
+      return (
+        <>
+          <LoginTab>
+            {state.mainCard.list.map((item, index) => (
+              <li
+                className={state.mainCard.method === index ? 'active' : ''}
+                key={index}
+                onClick={() =>
+                  setState((prev) => {
+                    prev.mainCard.method = index
+                    return prev
+                  })
+                }
+                role="presentation"
+              >
+                {item.name}
+              </li>
+            ))}
+          </LoginTab>
+          <Form
+            className="login-form"
+            form={form}
+            initialValues={{ areaCode: '86' }}
+            onFinish={loginSubmit}
+          >
+            {state.mainCard.method === 1 ? (
+              <Row gutter={20}>
+                <Col span={8}>{areaCode}</Col>
+                <Col span={16}>{phoneNumber}</Col>
+              </Row>
+            ) : (
+              <Row gutter={20}>
+                <Col span={24}>{accountNumber}</Col>
+              </Row>
+            )}
+            <div className="pass-word mt-4">
+              {state.mainCard.method === 0 ? (
+                <>
+                  <Form.Item
+                    name="password"
+                    rules={[
+                      {
+                        required: true,
+                        message: '请输入您的登录密码',
+                      },
+                    ]}
+                  >
+                    <Input
+                      type={state.mainCard.passwordMode ? 'text' : 'password'}
+                      placeholder="请输入您的登录密码"
+                      maxLength={16}
+                    />
+                  </Form.Item>
+                  <div className="handle-password">
+                    {state.mainCard.passwordMode ? (
+                      <SxyIcon
+                        width={26}
+                        height={24}
+                        name="icon_login_display.png"
+                        onClick={() =>
+                          setState((prev) => {
+                            prev.mainCard.passwordMode = false
+                            return prev
+                          })
+                        }
+                      />
+                    ) : (
+                      <SxyIcon
+                        width={25}
+                        height={24}
+                        name="icon_login_hide.png"
+                        onClick={() =>
+                          setState((prev) => {
+                            prev.mainCard.passwordMode = true
+                            return prev
+                          })
+                        }
+                      />
+                    )}
+                  </div>
+                </>
+              ) : null}
+              {state.mainCard.method === 1 ? verificationCode : null}
+              <div className="login-process">
+                {/* <div>
+              <Checkbox
+                checked={state.mainCard.autoCheckbox}
+                onChange={(e) =>
+                  setState((prev) => {
+                    prev.mainCard.autoCheckbox = e.target.checked
+                    return prev
+                  })
+                }
+              >
+                <Text className="font-12" type="secondary">
+                  3天内自动登录
+                </Text>
+              </Checkbox>
+            </div> */}
+                <Button
+                  className="next-btn mt-2"
+                  type="primary"
+                  size="large"
+                  block
+                  loading={loginLoading}
+                  htmlType="submit"
+                >
+                  登录
+                </Button>
+                <Row className="mt-2" justify="space-between">
+                  <Col>
+                    {/* <Checkbox
+                  checked={state.mainCard.readAgreement}
+                  onChange={(e) =>
+                    handleMainCardState({ readAgreement: e.target.checked })
+                  }
+                >
+                  <Text className="font-12" type="secondary">
+                    我已阅读并同意
+                    <Button className="font-12 is-btn-link" type="link">
+                      《用户使用协议》
+                    </Button>
+                  </Text>
+                </Checkbox> */}
+                  </Col>
+                  <Col>
+                    <Button
+                      className="font-12 is-btn-link"
+                      type="link"
+                      onClick={() => {
+                        resetLoginInitState([0])
+                        setState({
+                          interfaceStatus: 2,
+                        })
+                      }}
+                    >
+                      忘记密码
+                    </Button>
+                    <Divider type="vertical" />
+                    {register}
+                  </Col>
+                </Row>
+                <Divider className="pointer mt-7" plain>
+                  <SxyIcon
+                    width={40}
+                    height={40}
+                    name="login_wx.png"
+                    onClick={() => {
+                      setState({
+                        interfaceStatus: 1,
+                      })
+                    }}
+                  />
+                </Divider>
+              </div>
+            </div>
+          </Form>
+        </>
+      )
+    }
+    // 微信登录
+    if (state.interfaceStatus === 1) {
+      return (
+        <div className="scan-code">
+          <div
+            className="rt-password"
+            onClick={() => {
+              setState({
+                interfaceStatus: 0,
               })
-            }
-          }
-        }
-        if (config.line.amount > 0 && config.line.layer > 0) {
-          for (var m = 0; m < config.line.amount / config.line.layer; m++) {
-            for (var n = 0; n < config.line.layer; n++) {
-              lines.push({
-                x: M.random() * wWidth,
-                y: M.random() * wHeight,
-                width: M.random() * (20 + n * 5) + (20 + n * 5),
-                color: config.line.color,
-                alpha: M.random() * 0.2 + (config.line.alpha - n * 0.1),
-                speed: config.speed * (1 + n * 0.5),
-              })
-            }
-          }
-        }
-        cancelAnimationFrame(timer)
-        timer = requestAnimationFrame(animate)
-        drawBack()
+            }}
+          >
+            <div className="rt-txt">
+              密码登录
+              <span className="r" />
+            </div>
+            <SxyIcon
+              className="ml-2"
+              width={21}
+              height={28}
+              name="icon_login_password.png"
+            />
+          </div>
+          <LoginTab className="text-center mt-3">
+            <li className="active">扫码登录</li>
+          </LoginTab>
+          <div className="code-img"></div>
+          <div className="text-center">{register}</div>
+        </div>
+      )
+    }
+    // 找回密码 | 注册
+    if (state.interfaceStatus === 2 || state.interfaceStatus === 3) {
+      const retrieveTitle = (
+        <LoginTab>
+          <li className="active">
+            {state.interfaceStatus === 2 ? '找回密码' : '注册'}
+          </li>
+        </LoginTab>
+      )
+      // 验证
+      if (state.retrieveCard.method === 0) {
+        return (
+          <>
+            {retrieveTitle}
+            <Form
+              className="login-form"
+              form={form}
+              initialValues={{ areaCode: '86' }}
+              onFinish={findNextStepFinish}
+            >
+              <Row gutter={20}>
+                <Col span={8}>{areaCode}</Col>
+                <Col span={16}>{phoneNumber}</Col>
+              </Row>
+              <div className="pass-word mt-4">{verificationCode}</div>
+              <div className="login-process">
+                <Button
+                  className="next-btn mt-10"
+                  type="primary"
+                  size="large"
+                  block
+                  loading={state.submitLoading}
+                  htmlType="submit"
+                >
+                  下一步
+                </Button>
+                <div className="text-center mt-2">{goAndLand}</div>
+              </div>
+            </Form>
+          </>
+        )
       }
-
-      /**
-       * @Description canvas背景动画构建
-       * @Author bihongbin
-       * @Date 2020-05-27 12:28:11
-       */
-      init = () => {
-        setCanvasHeight()
-        createItem()
+      // 重设密码 | 注册密码
+      if (state.retrieveCard.method === 1) {
+        return (
+          <>
+            {retrieveTitle}
+            <Form
+              className="login-form"
+              form={form}
+              onFinish={resetAndRetrieveFinish}
+            >
+              <div className="pass-word mt-4">
+                <Form.Item
+                  name="password"
+                  rules={[
+                    {
+                      required: true,
+                      message: '请输入您的登录密码',
+                    },
+                  ]}
+                >
+                  <Input
+                    type={state.retrieveCard.psBlock ? 'text' : 'password'}
+                    placeholder="请输入您的登录密码"
+                    maxLength={16}
+                  />
+                </Form.Item>
+                <div className="handle-password">
+                  {state.retrieveCard.psBlock ? (
+                    <SxyIcon
+                      width={26}
+                      height={24}
+                      name="icon_login_display.png"
+                      onClick={() => {
+                        setState((prev) => {
+                          prev.retrieveCard.psBlock = false
+                          return prev
+                        })
+                      }}
+                    />
+                  ) : (
+                    <SxyIcon
+                      width={25}
+                      height={24}
+                      name="icon_login_hide.png"
+                      onClick={() => {
+                        setState((prev) => {
+                          prev.retrieveCard.psBlock = true
+                          return prev
+                        })
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="pass-word mt-8">
+                <Form.Item
+                  name="confirmPassword"
+                  dependencies={['password']}
+                  rules={[
+                    {
+                      required: true,
+                      message: '请在此输入确认密码',
+                    },
+                    ({ getFieldValue }) => ({
+                      validator(rule, value) {
+                        if (!value || getFieldValue('password') === value) {
+                          return Promise.resolve()
+                        }
+                        return Promise.reject('两次输入的密码不一致')
+                      },
+                    }),
+                  ]}
+                >
+                  <Input
+                    type={state.retrieveCard.psAgainBlock ? 'text' : 'password'}
+                    placeholder="请在此输入确认密码"
+                    maxLength={16}
+                  />
+                </Form.Item>
+                <div className="handle-password">
+                  {state.retrieveCard.psAgainBlock ? (
+                    <SxyIcon
+                      width={26}
+                      height={24}
+                      name="icon_login_display.png"
+                      onClick={() => {
+                        setState((prev) => {
+                          prev.retrieveCard.psAgainBlock = false
+                          return prev
+                        })
+                      }}
+                    />
+                  ) : (
+                    <SxyIcon
+                      width={25}
+                      height={24}
+                      name="icon_login_hide.png"
+                      onClick={() => {
+                        setState((prev) => {
+                          prev.retrieveCard.psAgainBlock = true
+                          return prev
+                        })
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="login-process">
+                <Button
+                  className="next-btn mt-10"
+                  type="primary"
+                  size="large"
+                  loading={state.submitLoading}
+                  block
+                  htmlType="submit"
+                >
+                  {state.interfaceStatus === 2 ? '确定' : '注册'}
+                </Button>
+                <div className="text-center mt-2">{goAndLand}</div>
+              </div>
+            </Form>
+          </>
+        )
       }
+    }
+  }
 
-      init() // 初始化加载背景动画
-      window.addEventListener('resize', init) // 窗口大小变化调用
+  /**
+   * @Description 验证码定时器
+   * @Author bihongbin
+   * @Date 2020-08-27 18:47:29
+   */
+  useEffect(() => {
+    if (state.verificationText.count < stateValue.verificationText.count) {
+      verificationRef.current = setInterval(() => {
+        if (state.verificationText.count === 1) {
+          // 重置验证码
+          resetVerificationCode()
+          // 清除
+          clearInterval(verificationRef.current)
+        } else {
+          setState((prev) => {
+            prev.verificationText.count = state.verificationText.count - 1
+            return prev
+          })
+        }
+      }, 1000)
     }
     return () => {
-      window.removeEventListener('resize', init) // 卸载移除事件
+      // 清除
+      clearInterval(verificationRef.current)
     }
-  }, [])
+  }, [resetVerificationCode, setState, state.verificationText.count])
 
+  /**
+   * @Description 清除恢复默认redux数据
+   * @Author bihongbin
+   * @Date 2020-11-02 11:00:14
+   */
   useEffect(() => {
-    dispatchRedux(auth.actions.logout()) // 重置redux存储的用户信息
-    dispatchRedux(auth.actions.setVerificationCode()) // 初始化图形验证码
+    dispatchRedux(auth.actions.logout())
   }, [dispatchRedux])
 
   return (
     <>
-      <LoginCanvas>
-        <canvas ref={canvasBgRef} />
-        <canvas ref={canvasCircleRef} />
-        <canvas ref={canvasErectRef} />
-      </LoginCanvas>
-      <LoginMain>
-        <LoginFrom>
-          <FormTitle>登录</FormTitle>
-          <LoginFormStyle>
-            <Form autoComplete="off" onFinish={handleFinish}>
-              <div>用户名</div>
-              <Form.Item
-                name="username"
-                rules={[{ required: true, message: '请输入用户名' }]}
-              >
-                <Input prefix={<UserOutlined />} placeholder="请输入用户名" />
-              </Form.Item>
-              <div>密码</div>
-              <Form.Item
-                name="password"
-                rules={[{ required: true, message: '请输入密码' }]}
-              >
-                <Input
-                  prefix={<LockOutlined />}
-                  type="password"
-                  placeholder="请输入密码"
-                />
-              </Form.Item>
-              <div>验证码</div>
-              <Form.Item
-                name="imgCode"
-                rules={[
-                  { required: true, message: '请输入验证码' },
-                  () => ({
-                    validator(rule, value) {
-                      if (value && value.length !== 4) {
-                        return Promise.reject('验证码长度为4位')
-                      }
-                      return Promise.resolve()
-                    },
-                  }),
-                ]}
-              >
-                <Row gutter={10}>
-                  <Col span={16}>
-                    <Input
-                      prefix={<CheckCircleOutlined />}
-                      maxLength={4}
-                      placeholder="请输入验证码"
-                    />
-                  </Col>
-                  <Col span={8}>
-                    <CodeImg
-                      onClick={() =>
-                        dispatchRedux(auth.actions.setVerificationCode())
-                      }
-                      src={verificationCode.img}
-                      alt="验证码"
-                    />
-                  </Col>
-                </Row>
-              </Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                size="large"
-                loading={loginLoading}
-                block
-              >
-                登 录
-              </Button>
-            </Form>
-          </LoginFormStyle>
-        </LoginFrom>
-      </LoginMain>
+      <LoginView />
+      <LoginCard>
+        <LoginMain>{renderLoginMethod()}</LoginMain>
+        <Row className="mt-3" justify="center">
+          <Col>
+            <Text className="font-12" type="secondary">
+              2020©深圳市华旅云创科技有限公司
+            </Text>
+          </Col>
+        </Row>
+      </LoginCard>
     </>
   )
 }

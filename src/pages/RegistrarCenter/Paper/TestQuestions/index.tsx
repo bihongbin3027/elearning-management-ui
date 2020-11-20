@@ -1,22 +1,17 @@
 import React from 'react'
-// import { useSelector } from 'react-redux'
-// import { RootStateType } from '@/store/rootReducer'
-import RenderChildViews, { RenderPageNode } from '@/routes/ChildPageView'
+import RenderSubRoute from '@/components/RenderSubRoute'
 import TestQuestions from '@/pages/RegistrarCenter/Paper/TestQuestions/MainList'
 
-const PageViews = () => {
-  // const { tabLayout } = useSelector(({ auth }: RootStateType) => auth)
-  // const pathString = tabLayout.tabList[tabLayout.current].path
-
-  let nodeData: RenderPageNode[] = [
+const stateValue = {
+  tabList: [
     {
+      name: '试题管理',
       path: '/test-questions-manage',
       component: TestQuestions,
-      exact: true,
     },
-  ]
-
-  return <RenderChildViews data={nodeData} />
+  ],
 }
+
+const PageViews = () => <RenderSubRoute data={stateValue.tabList} />
 
 export default PageViews

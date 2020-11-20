@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useReducer, useCallback } from 'react'
+import React, { useEffect, useRef, useCallback } from 'react'
 import { Space, Button, message, Switch } from 'antd'
+import { ColumnType } from 'antd/es/table'
+import useSetState from '@/hooks/useSetState'
 import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
@@ -8,8 +10,10 @@ import LayoutTableList, {
 import TableOperate from '@/components/TableOperate'
 import LayoutFormModal, {
   LayoutFormModalCallType,
+  LayoutFormPropTypes,
 } from '@/components/LayoutFormModal'
 import { handleRowDelete } from '@/utils'
+import { GlobalConstant } from '@/config'
 import { AnyObjectType } from '@/typings'
 import { SxyTable } from '@/style/module/table'
 import { SxyButton } from '@/style/module/button'
@@ -20,105 +24,39 @@ import {
   deleteBasicQtyList,
 } from '@/api/basicData'
 
-type ReducerType = (state: StateType, action: Action) => StateType
-interface Action {
-  type: ActionType
-  payload: any
-}
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_SEARCH_FORM_LIST = '[SetSearchFormList Action]',
-  SET_COLUMNS = '[SetColumns Action]',
-  SET_CARD_HANDLE_BUTTON_LIST = '[SetCardHandleButtonList Action]',
-  SET_HANDLE_MODAL = '[SetHandleModal Action]',
-}
-
-const stateValue = {
-  // 头部搜索数据
-  searchFormList: [] as FormListCallType[],
-  // 表格表头
-  tableColumns: [],
-  // 卡片操作按钮
-  cardHandleButtonList: [] as CardButtonType[],
-  // 分类弹窗
-  handleModal: {
-    visible: false,
-    title: '添加新商品组',
-    disabled: false,
-    loading: false,
-    saveLoading: false,
-    submitApi: handleBasicQtyList,
-    formList: [] as FormListCallType[],
-  },
+interface StateType {
+  searchFormList: FormListCallType[]
+  tableColumns: ColumnType<AnyObjectType>[]
+  cardHandleButtonList: CardButtonType[]
+  handleModal: LayoutFormPropTypes
 }
 
 const GoodsGroupMainList = () => {
+  const authBasic = GlobalConstant.buttonPermissions.basic // 基础权限
   const tableRef = useRef<LayoutTableCallType>()
   const layoutFormModalRef = useRef<LayoutFormModalCallType>()
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_SEARCH_FORM_LIST: // 设置头部搜索表单数据
-        return {
-          ...state,
-          searchFormList: action.payload,
-        }
-      case ActionType.SET_COLUMNS: // 设置表格头
-        return {
-          ...state,
-          tableColumns: action.payload,
-        }
-      case ActionType.SET_CARD_HANDLE_BUTTON_LIST: // 设置卡片操作按钮
-        return {
-          ...state,
-          cardHandleButtonList: action.payload,
-        }
-      case ActionType.SET_HANDLE_MODAL: // 设置新增、编辑、查看弹窗数据
-        return {
-          ...state,
-          handleModal: {
-            ...state.handleModal,
-            ...action.payload,
-          },
-        }
-    }
-  }, stateValue)
-
-  /**
-   * @Description 设置头部搜索表单数据
-   * @Author bihongbin
-   * @Date 2020-09-04 10:07:50
-   */
-  const handleSearchFormState = (data: StateType['searchFormList']) => {
-    dispatch({
-      type: ActionType.SET_SEARCH_FORM_LIST,
-      payload: data,
-    })
-  }
-
-  /**
-   * @Description 设置卡片操作按钮数据
-   * @Author bihongbin
-   * @Date 2020-09-04 10:25:42
-   */
-  const handleCardButtonState = (data: StateType['cardHandleButtonList']) => {
-    dispatch({
-      type: ActionType.SET_CARD_HANDLE_BUTTON_LIST,
-      payload: data,
-    })
-  }
-
-  /**
-   * @Description 设置新增、编辑弹窗数据
-   * @Author bihongbin
-   * @Date 2020-09-04 10:07:09
-   */
-  const handleModalState = (data: Partial<StateType['handleModal']>) => {
-    dispatch({
-      type: ActionType.SET_HANDLE_MODAL,
-      payload: data,
-    })
-  }
+  const [state, setState] = useSetState<StateType>({
+    // 头部搜索数据
+    searchFormList: [
+      {
+        componentName: 'Input',
+        name: 'b',
+        placeholder: '请输入商品组名称搜索',
+      },
+    ],
+    // 表格表头
+    tableColumns: [],
+    // 卡片操作按钮
+    cardHandleButtonList: [],
+    // 分类弹窗
+    handleModal: {
+      visible: false,
+      title: '添加新商品组',
+      disable: false,
+      submitApi: handleBasicQtyList,
+      formList: [],
+    },
+  })
 
   /**
    * @Description 启用和禁用
@@ -150,40 +88,24 @@ const GoodsGroupMainList = () => {
    */
   const getOpenModal = useCallback(
     (record: AnyObjectType, type: 'look' | 'edit') => {
-      // 查看
-      if (type === 'look') {
-        handleModalState({
-          visible: true,
-          title: '商品组详情',
-          disabled: true,
-        })
-      }
-      // 编辑
-      if (type === 'edit') {
-        handleModalState({
-          visible: true,
-          title: '编辑商品组',
-          disabled: false,
-        })
-      }
+      setState((prev) => {
+        // 查看
+        if (type === 'look') {
+          prev.handleModal.visible = true
+          prev.handleModal.title = '商品组详情'
+          prev.handleModal.disable = true
+        }
+        // 编辑
+        if (type === 'edit') {
+          prev.handleModal.visible = true
+          prev.handleModal.title = '编辑商品组'
+          prev.handleModal.disable = false
+        }
+        return prev
+      })
     },
-    [],
+    [setState],
   )
-
-  /**
-   * @Description 设置头部搜索
-   * @Author bihongbin
-   * @Date 2020-09-04 10:07:24
-   */
-  useEffect(() => {
-    handleSearchFormState([
-      {
-        componentName: 'Input',
-        name: 'b',
-        placeholder: '请输入商品组名称搜索',
-      },
-    ])
-  }, [])
 
   /**
    * @Description 设置卡片操作按钮数据
@@ -191,19 +113,24 @@ const GoodsGroupMainList = () => {
    * @Date 2020-09-04 10:11:34
    */
   useEffect(() => {
-    handleCardButtonState([
-      {
-        name: '添加新商品组',
-        icon: 'card_add.png',
-        clickConfirm: () => {
-          handleModalState({
-            visible: true,
-            title: '添加新商品组',
-          })
+    setState({
+      cardHandleButtonList: [
+        {
+          name: '添加新商品组',
+          authCode: authBasic.ADD,
+          icon: 'card_add.png',
+          clickConfirm: () => {
+            setState((prev) => {
+              prev.handleModal.visible = true
+              prev.handleModal.id = ''
+              prev.handleModal.title = '添加新商品组'
+              return prev
+            })
+          },
         },
-      },
-    ])
-  }, [])
+      ],
+    })
+  }, [authBasic.ADD, setState])
 
   /**
    * @Description 设置表格头
@@ -211,9 +138,8 @@ const GoodsGroupMainList = () => {
    * @Date 2020-09-04 10:28:25
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_COLUMNS,
-      payload: [
+    setState((prev) => {
+      prev.tableColumns = [
         {
           title: '商品组名称',
           dataIndex: 'qtyCname',
@@ -248,12 +174,15 @@ const GoodsGroupMainList = () => {
             // 编辑
             operatingData.push({
               name: '编辑',
-              onClick: () => getOpenModal(record, 'edit'),
+              authCode: authBasic.EDIT,
               svg: 'table_edit.png',
+              onClick: () => getOpenModal(record, 'edit'),
             })
             // 删除
             operatingData.push({
               name: '删除',
+              authCode: authBasic.DELETE,
+              svg: 'table_delete.png',
               onClick: () => {
                 if (tableRef.current) {
                   handleRowDelete(
@@ -263,14 +192,14 @@ const GoodsGroupMainList = () => {
                   )
                 }
               },
-              svg: 'table_delete.png',
             })
             return <TableOperate operateButton={operatingData} />
           },
         },
-      ],
+      ]
+      return prev
     })
-  }, [getOpenModal])
+  }, [authBasic.DELETE, authBasic.EDIT, getOpenModal, setState])
 
   /**
    * @Description 设置新增编辑弹窗默认表单字段
@@ -278,15 +207,15 @@ const GoodsGroupMainList = () => {
    * @Date 2020-09-04 10:57:01
    */
   useEffect(() => {
-    handleModalState({
-      formList: [
+    setState((prev) => {
+      prev.handleModal.formList = [
         {
           componentName: 'Input',
           name: 'a',
           label: '商品组名称',
           placeholder: '请输入商品组名称',
           rules: [{ required: true, message: '请输入商品组名称' }],
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
           colProps: {
             span: 24,
           },
@@ -297,7 +226,7 @@ const GoodsGroupMainList = () => {
           label: '是否启用',
           placeholder: '请选择是否启用',
           rules: [{ required: true, message: '请选择是否启用' }],
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
           selectData: [
             {
               label: '是',
@@ -358,9 +287,10 @@ const GoodsGroupMainList = () => {
             </>
           ),
         },
-      ],
+      ]
+      return prev
     })
-  }, [state.handleModal.disabled])
+  }, [setState, state.handleModal.disable])
 
   return (
     <>
@@ -394,7 +324,12 @@ const GoodsGroupMainList = () => {
             b: '0',
           },
         }}
-        onCancel={() => handleModalState({ visible: false })}
+        onCancel={() => {
+          setState((prev) => {
+            prev.handleModal.visible = false
+            return prev
+          })
+        }}
         {...state.handleModal}
       />
     </>

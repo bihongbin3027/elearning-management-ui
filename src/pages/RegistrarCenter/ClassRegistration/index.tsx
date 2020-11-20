@@ -1,21 +1,10 @@
 import React from 'react'
-import {
-  Route,
-  Switch,
-  Redirect,
-  useRouteMatch,
-  useLocation,
-  useHistory,
-} from 'react-router-dom'
-import { Card, Row, Col, Tabs, Input } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import RenderSubRoute from '@/components/RenderSubRoute'
 import ClassNotes from '@/pages/RegistrarCenter/ClassRegistration/ClassNotes'
 import RememberLesson from '@/pages/RegistrarCenter/ClassRegistration/RememberLesson'
 import MakeUpLessons from '@/pages/RegistrarCenter/ClassRegistration/MakeUpLessons'
 import ClassHourSummary from '@/pages/RegistrarCenter/ClassRegistration/ClassHourSummary'
 import TeacherAudition from '@/pages/RegistrarCenter/ClassRegistration/TeacherAudition'
-
-const { TabPane } = Tabs
 
 const stateValue = {
   tabList: [
@@ -47,61 +36,6 @@ const stateValue = {
   ],
 }
 
-const ClassRegistration = () => {
-  const match = useRouteMatch()
-  const history = useHistory()
-  const location = useLocation()
-
-  /**
-   * @Description 搜索
-   * @Author bihongbin
-   * @Date 2020-09-10 16:35:07
-   */
-  const onSearchText = (e: any) => {
-    e.persist()
-    console.log(e.target.value)
-  }
-
-  return (
-    <>
-      <Card className="card-header-tabs">
-        <Row align="middle" justify="space-between">
-          <Col>
-            <Tabs
-              activeKey={location.pathname}
-              tabBarGutter={60}
-              onTabClick={(key) => history.push(key)}
-            >
-              {stateValue.tabList.map((item) => (
-                <TabPane tab={item.name} key={`${match.path}${item.path}`} />
-              ))}
-            </Tabs>
-          </Col>
-          <Col className="ant-form form-ash-theme">
-            <div className="ant-form-item-control">
-              <Input
-                className="search-input"
-                placeholder="请输入班级/一对一名称"
-                prefix={<SearchOutlined />}
-                onPressEnter={(e) => onSearchText(e)}
-              />
-            </div>
-          </Col>
-        </Row>
-      </Card>
-      <Switch>
-        {stateValue.tabList.map((item) => (
-          <Route
-            exact
-            path={`${match.path}${item.path}`}
-            component={item.component}
-            key={item.path}
-          />
-        ))}
-        <Redirect to={`${match.path}/remember-lesson`} />
-      </Switch>
-    </>
-  )
-}
+const ClassRegistration = () => <RenderSubRoute data={stateValue.tabList} />
 
 export default ClassRegistration

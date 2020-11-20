@@ -12,8 +12,13 @@ export const SxyIcon = styled.i<SxyIconType>`
   display: inline-block;
   width: ${(props: SxyIconType) => `${props.width}px`};
   height: ${(props: SxyIconType) => `${props.height}px`};
-  background-image: ${(props: SxyIconType) =>
-    'url(' + require(`../../assets/icon/${props.name}`) + ')'};
+  background-image: ${(props: SxyIconType) => {
+    try {
+      return 'url(' + require(`../../assets/icon/${props.name}`) + ')'
+    } catch (error) {
+      return 'url(' + require(`../../assets/icon/icon_file_unknown.png`) + ')'
+    }
+  }};
   background-repeat: no-repeat;
   background-position: 0 0;
   background-size: contain;

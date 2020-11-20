@@ -28,7 +28,7 @@ interface SxyButtonType extends ThemesDefaultType {
 
 // 按钮
 export const SxyButton = styled.button<SxyButtonType>`
-  line-height: 1.5715;
+  line-height: 1;
   position: relative;
   display: ${(props: SxyButtonType) =>
     props.block ? 'block' : 'inline-block'};
@@ -40,7 +40,7 @@ export const SxyButton = styled.button<SxyButtonType>`
   background-image: none;
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.015);
   cursor: pointer;
-  transition: all 0.3s ease-out;
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
   user-select: none;
   touch-action: manipulation;
   height: ${(props: SxyButtonType) => {
@@ -69,10 +69,6 @@ export const SxyButton = styled.button<SxyButtonType>`
       return `0 none`
     }
     switch (props.mode) {
-      case 'primary':
-        return `1px solid ${
-          props.theme && props.theme['@color-border-primary']
-        }`
       case 'ghost':
         return `1px solid ${
           props.theme && props.theme['@color-border-primary']
@@ -154,8 +150,6 @@ export const SxyButton = styled.button<SxyButtonType>`
     }};
     border-color: ${(props: SxyButtonType) => {
       switch (props.mode) {
-        case 'primary':
-          return props.theme['@color-border-primary-hover']
         case 'ghost':
           return props.theme['@color-text-primary-hover']
       }
@@ -170,6 +164,8 @@ export const SxyButton = styled.button<SxyButtonType>`
           return props.theme['@color-bg-track']
         case 'light-green':
           return props.theme['@color-bg-light-green-hover']
+        case 'dark-grey':
+          return props.theme['@color-bg-dark-grey']
         case 'deep-green':
           return props.theme['@color-bg-finish-hover']
         case 'light-red':

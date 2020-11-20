@@ -33,9 +33,6 @@ export const SiderStyle = styled(Sider)`
       margin-top: 2px;
       margin-bottom: 0;
     }
-    .logo-icon {
-      cursor: pointer;
-    }
     .sider-open-btn {
       position: absolute;
       top: 50%;

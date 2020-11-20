@@ -1,42 +1,21 @@
-const gatewayField = {
-  sibeuaaapi: '/sibeuaaapi',
-  sibemanagementapi: '/sibemanagementapi',
-  ibfapi: '/ibfapi',
-}
+/*
+ * @Description 全局常用配置，配置的参数为不可改变的，当你需要的参数可能改变，不要写在config里面，会和路由缓存组件功能产生一些不易察觉的问题
+ * @Author bihongbin
+ * @Date 2020-08-18 18:37:48
+ * @LastEditors bihongbin
+ * @LastEditTime 2020-11-16 11:06:25
+ */
+
+const rootConfig = require('../../public/rootConfig.json')
 
 // 全局配置
 export const GlobalConstant = {
   // node环境变量地址
-  baseUrl: process.env.REACT_APP_API_URL,
-  gatewayUrl: gatewayField,
-  // 默认token
-  accessToken: process.env.REACT_APP_TOKEN,
-  // http状态码
-  codeMessage: {
-    '301': '请求的网页已永久移动到新位置',
-    '302': '临时性重定向',
-    '303': '临时性重定向，且总是使用 GET 请求新的 URI',
-    '304': '自从上次请求后，请求的网页未修改过',
-    '400':
-      '服务器无法理解请求的格式，客户端不应当尝试再次使用相同的内容发起请求',
-    '401': '用户没有权限（令牌、用户名、密码错误）',
-    '403': '用户得到授权，但是访问是被禁止的。',
-    '404': '找不到任何与 URI 相匹配的资源',
-    '500': '服务器发生错误，请检查服务器',
-    '502': '网关错误',
-    '503': '服务不可用，服务器暂时过载或维护',
-    '504': '网关超时',
-  },
+  baseUrl: rootConfig.REACT_APP_API_URL,
   // 左侧菜单宽度
   siderWidth: 200,
   // 左侧菜单缩小宽度
   siderCollapsedWidth: 80,
-  // 分页默认参数
-  paginationOptions: {
-    total: 10, // 总共多少条
-    current: 1, // 当前第几页
-    pageSize: 10, // 每页显示多少条数据
-  },
   // card头部搜索表单响应式配置
   formSearchColConfig: {
     xs: 24,
@@ -45,8 +24,57 @@ export const GlobalConstant = {
     lg: 5,
     xl: 4,
   },
-  // 载入账单字段配置上传文件地址
-  fieldConfigUploadHttp: `${process.env.REACT_APP_API_URL}${gatewayField.ibfapi}/api/etl/load-config-column/analysis`,
-  // 应付账单上传文件地址
-  billHdrUploadHttp: `${process.env.REACT_APP_API_URL}${gatewayField.ibfapi}/api/order/bill-hdr/upload`,
+  // 正则验证
+  regular: {
+    iPhone: /^[1][3,4,5,7,8,9][0-9]{9}$/, // 手机号
+    email: /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(.[a-zA-Z0-9_-])+/, // 邮箱
+  },
+  // 菜单code
+  menuPermissionsCode: {
+    // 系统管理
+    systemManagement: {
+      systemConfig: {
+        name: '系统配置',
+        code: 'RBAC_SYS_SYSTEM_CONFIG',
+      },
+      moduleConfig: {
+        name: '模块配置',
+        code: 'RBAC_SYS_MODULE_CONFIG',
+      },
+      orgDepartmentUsers: {
+        name: '组织管理-部门用户列表',
+        code: 'RBAC_ORG_MRG_USER',
+      },
+    },
+  },
+  // 按钮权限
+  buttonPermissions: {
+    // 基本
+    basic: {
+      ADD: 'ADD', // 新增
+      EDIT: 'EDIT', // 编辑
+      DELETE: 'DELETE', // 删除
+      QUERY: 'QUERY', // 查询
+      ENABLEANDSUSPEND: 'ENABLEANDSUSPEND', // 挂起和恢复
+      MORE: '	MORE', // 更多
+      IMPORT: 'IMPORT', // 导入
+      EXPORT: 'EXPORT', // 导出
+      ACCREDIT: 'ACCREDIT', // 授权
+      VIEW_AUTH: 'VIEW_AUTH', // 查看权限
+      AUTHORITY: 'AUTHORITY', // 分配权限
+    },
+    // 自定义
+    customize: {},
+  },
+  // jsencrypt执行OpenSSL的RSA加密key
+  encryptPublicKey:
+    '-----BEGIN PUBLIC KEY-----' +
+    'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCO+IFV9bc0/s9RZQTnWtMkj2Wu9oNMP2fWSXgCpBWl/hlm/IyZCbV0IikUvYOnb5qyK/YG+grqE36C/1MHyBpxVkYxZ4WsJcJo82meyyklAg4VIOkd6yndLCJcqaBtdapm1v3hBTOXC6L8JXbHbdgoJGxH9u+OoalJckCxjUNbCwIDAQAB' +
+    '-----END PUBLIC KEY-----',
+  // 文件管理上传文件地址
+  fileManageUploadHttp: `${rootConfig.REACT_APP_API_URL}/file/file`,
+  // 业财载入账单字段配置上传文件地址-后期删除 // DELETE
+  fieldConfigUploadHttp: `${rootConfig.REACT_APP_API_URL}/api/etl/load-config-column/analysis`,
+  // 业财应付账单上传文件地址-后期删除 // DELETE
+  billHdrUploadHttp: `${rootConfig.REACT_APP_API_URL}/api/order/bill-hdr/upload`,
 }

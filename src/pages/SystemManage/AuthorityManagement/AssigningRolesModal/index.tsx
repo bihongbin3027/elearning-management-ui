@@ -1,142 +1,158 @@
-import React, { useReducer, useEffect, useRef } from 'react'
-import { Modal, Row, Button, Col, Divider, Radio, Checkbox, Spin } from 'antd'
+import React, { useEffect, useRef, useCallback } from 'react'
+import {
+  Modal,
+  Row,
+  Button,
+  Col,
+  Divider,
+  Radio,
+  Checkbox,
+  Spin,
+  message,
+} from 'antd'
+import useSetState from '@/hooks/useSetState'
 import GenerateForm, {
   FormCallType,
   FormListType,
 } from '@/components/GenerateForm'
+import Empty from '@/components/Empty'
+import { getDataTransformSelect } from '@/utils'
+import { roleClassData } from '@/config/selectData'
+import { setUserRole } from '@/api/systemManage/user'
+import { getRoleList } from '@/api/systemManage/roles'
 
 interface PropType {
   visible: boolean
   width?: number
   title: string
-  id?: string
+  id: string
   onCancel: () => void
 }
 
 interface RoleCheckType {
-  name: string
-  value: string | number
+  id: string | number
+  roleCname: string
 }
 
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_LOADING = '[SetLoading Action]',
-  SET_FORM_LIST = '[SetFormList Action]',
-  SET_ROLE_CHECK_LIST = '[SetRoleCheckList Action]',
-  SET_SAVE_LOADING = '[SetSaveLoading Action]',
-}
-
-const stateValue = {
-  loading: false, // 弹窗全局显示loading
-  formList: [] as FormListType[], // 表单数据
-  roleCheckList: [] as RoleCheckType[], // 角色数据
-  saveLoading: false, // 保存loading
+interface StateType {
+  loading: boolean
+  formList: FormListType[]
+  roleCheckList: RoleCheckType[]
+  roleCheckValue: string
+  roleCheckGroupValue: any[]
+  saveLoading: boolean
 }
 
 const AssigningRolesView = (props: PropType) => {
   const formRef = useRef<FormCallType>()
-  const [state, dispatch] = useReducer<
-    (state: StateType, action: Action) => StateType
-  >((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_LOADING: // 设置全局显示loading
-        return {
-          ...state,
-          loading: action.payload,
-        }
-      case ActionType.SET_FORM_LIST: // 设置表单数据
-        return {
-          ...state,
-          formList: action.payload,
-        }
-      case ActionType.SET_ROLE_CHECK_LIST: // 设置角色数据
-        return {
-          ...state,
-          roleCheckList: action.payload,
-        }
-      case ActionType.SET_SAVE_LOADING: // 保存loading
-        return {
-          ...state,
-          saveLoading: action.payload,
-        }
-      default:
-        return state
+  const [state, setState] = useSetState<StateType>({
+    loading: false, // 弹窗全局显示loading
+    formList: [], // 表单数据
+    roleCheckList: [], // 角色数据
+    roleCheckValue: 'ROLE', // 角色分类
+    roleCheckGroupValue: [], // 选中的角色
+    saveLoading: false, // 保存loading
+  })
+
+  /**
+   * @Description 角色列表
+   * @Author bihongbin
+   * @Date 2020-10-13 14:49:39
+   */
+  const getRoleData = useCallback(async () => {
+    if (formRef.current) {
+      const company = formRef.current.formGetValues(['companyCode'])
+      setState({
+        loading: true,
+      })
+      try {
+        const result = await getRoleList({
+          cId: company.id,
+          roleCategory: state.roleCheckValue,
+        })
+        setState({
+          roleCheckList: result.data.content,
+        })
+      } catch (error) {}
+      setState({
+        loading: false,
+      })
     }
-  }, stateValue)
+  }, [setState, state.roleCheckValue])
 
   /**
    * @Description 确定
    * @Author bihongbin
    * @Date 2020-08-05 16:29:26
    */
-  const handleModalSave = () => {}
+  const handleModalSave = async () => {
+    if (state.roleCheckGroupValue.length) {
+      setState({
+        saveLoading: true,
+      })
+      try {
+        await setUserRole({
+          id: props.id,
+          ids: state.roleCheckGroupValue,
+        })
+        setState({
+          saveLoading: false,
+        })
+        message.success('分配成功', 1.5)
+        props.onCancel()
+      } catch (error) {}
+      setState({
+        saveLoading: false,
+      })
+    } else {
+      message.warn('请选择角色', 1.5)
+    }
+  }
 
   /**
-   * @Description 设置表单数据
+   * @Description 初始化数据
    * @Author bihongbin
    * @Date 2020-08-05 16:21:31
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_FORM_LIST,
-      payload: [
-        {
-          componentName: 'Select',
-          name: 'as1',
-          label: '公司',
-          placeholder: '请选择公司',
-          selectData: [],
-        },
-      ],
-    })
-  }, [])
-
-  /**
-   * @Description 设置角色数据
-   * @Author bihongbin
-   * @Date 2020-08-05 16:21:49
-   */
-  useEffect(() => {
-    dispatch({
-      type: ActionType.SET_ROLE_CHECK_LIST,
-      payload: [
-        {
-          name: '总经办',
-          value: '0',
-        },
-        {
-          name: '系统管理员',
-          value: '1',
-        },
-        {
-          name: '客服专员',
-          value: '2',
-        },
-        {
-          name: '行政专员',
-          value: '3',
-        },
-        {
-          name: '人事专员',
-          value: '4',
-        },
-        {
-          name: '出票管理员',
-          value: '5',
-        },
-        {
-          name: '出票原',
-          value: '6',
-        },
-      ],
-    })
-  }, [])
+    const getInit = async () => {
+      setState({
+        loading: true,
+      })
+      if (props.id) {
+        try {
+          const companyData = await getDataTransformSelect(
+            '/rbac/user/company',
+            ['companyName', 'companyCode'],
+          )
+          setState({
+            formList: [
+              {
+                componentName: 'Select',
+                name: 'companyCode',
+                label: '公司',
+                placeholder: '请选择公司',
+                selectData: companyData,
+                rules: [{ required: true, message: '请选择公司' }],
+              },
+            ],
+          })
+          if (formRef.current && companyData.length) {
+            formRef.current.formSetValues({
+              companyCode: companyData[0].value,
+            })
+            getRoleData()
+          }
+        } catch (error) {}
+      }
+      setState({
+        loading: false,
+      })
+    }
+    if (props.visible) {
+      getInit()
+    }
+  }, [getRoleData, props.id, props.visible, setState])
 
   return (
     <Modal
@@ -157,6 +173,12 @@ const AssigningRolesView = (props: PropType) => {
               formConfig={{
                 size: 'large',
                 labelCol: { span: 24 },
+                onValuesChange: (changedFields) => {
+                  const filed = changedFields['companyCode']
+                  if (filed) {
+                    getRoleData()
+                  }
+                },
               }}
               rowGridConfig={{ gutter: [40, 0] }}
               colGirdConfig={{ span: 24 }}
@@ -167,30 +189,58 @@ const AssigningRolesView = (props: PropType) => {
               <Col>
                 <Radio.Group
                   className="sxy-radio-group"
-                  defaultValue="a"
+                  value={state.roleCheckValue}
                   buttonStyle="solid"
+                  onChange={(e) => {
+                    setState({
+                      roleCheckValue: e.target.value,
+                    })
+                  }}
                 >
-                  <Radio.Button value="a">用户组</Radio.Button>
-                  <Radio.Button value="b">常规角色</Radio.Button>
-                  <Radio.Button value="c">拒绝角色</Radio.Button>
+                  {roleClassData.map((item) => (
+                    <Radio.Button value={item.value} key={item.value}>
+                      {item.label}
+                    </Radio.Button>
+                  ))}
                 </Radio.Group>
               </Col>
               <Col>
-                <Button type="link">清空</Button>
+                <Button
+                  type="link"
+                  onClick={() => {
+                    setState({
+                      roleCheckGroupValue: [],
+                    })
+                  }}
+                >
+                  清空
+                </Button>
               </Col>
             </Row>
-            <Checkbox.Group className="mt-5">
+            <Checkbox.Group
+              className="mt-5"
+              value={state.roleCheckGroupValue}
+              onChange={(value) => {
+                setState({
+                  roleCheckGroupValue: value,
+                })
+              }}
+              style={{ width: '100%' }}
+            >
               <Row gutter={[20, 10]}>
-                {state.roleCheckList.map((item, index) => (
-                  <Col span={12} key={index}>
-                    <Checkbox
-                      className="sxy-checkbox-button"
-                      value={item.value}
-                    >
-                      {item.name}
-                    </Checkbox>
+                {state.roleCheckList.length ? (
+                  state.roleCheckList.map((item, index) => (
+                    <Col span={12} key={index}>
+                      <Checkbox className="sxy-checkbox-button" value={item.id}>
+                        {item.roleCname}
+                      </Checkbox>
+                    </Col>
+                  ))
+                ) : (
+                  <Col span={24}>
+                    <Empty outerHeight={200} />
                   </Col>
-                ))}
+                )}
               </Row>
             </Checkbox.Group>
           </Col>

@@ -6,6 +6,14 @@ const CompressionWebpackPlugin = require('compression-webpack-plugin') //buildç”
 
 module.exports = {
   webpack: {
+    configure: (webpackConfig) => {
+      const scopePluginIndex = webpackConfig.resolve.plugins.findIndex(
+        ({ constructor }) =>
+          constructor && constructor.name === 'ModuleScopePlugin',
+      )
+      webpackConfig.resolve.plugins.splice(scopePluginIndex, 1)
+      return webpackConfig
+    },
     plugins: [
       ...when(
         Boolean(process.env.ANALYZE),

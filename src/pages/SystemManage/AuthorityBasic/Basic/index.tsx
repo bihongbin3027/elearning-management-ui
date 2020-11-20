@@ -1,138 +1,113 @@
-import React, { useRef, useReducer, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { Avatar } from 'antd'
+import moment from 'moment'
+import { ColumnType } from 'antd/es/table'
+import useSetState from '@/hooks/useSetState'
 import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
+  CardButtonType,
 } from '@/components/LayoutTableList'
 import LayoutFormModal, {
   LayoutFormModalCallType,
+  LayoutFormPropTypes,
 } from '@/components/LayoutFormModal'
-import TableOperate from '@/components/TableOperate'
+import { GlobalConstant } from '@/config'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import IconSelectionModal from '@/pages/SystemManage/AuthorityManagement/IconSelectionModal'
 import { handleRowEnableDisable, handleRowDelete } from '@/utils'
+import { AnyObjectType } from '@/typings'
+import { statusData } from '@/config/selectData'
 import {
-  getBasicQtyList,
-  handleBasicQtyList,
-  deleteBasicQtyList,
-  setBasicQtyStatus,
-} from '@/api/basicData'
+  getBasicButtonList,
+  handleBasicButtonList,
+  switchBasicButtonRowsList,
+} from '@/api/systemManage/menu'
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_SEARCH_FORM_LIST = '[SetSearchFormList Action]',
-  SET_CARD_HANDLE_BUTTON_LIST = '[SetCardHandleButtonList Action]',
-  SET_TABLE_COLUMNS_LIST = '[SetTableColumnsList Action]',
-  SET_HANDLE_MODAL = '[SetHandleModal Action]',
-  SET_ICON_MODAL = '[SetIconModal Action]',
-}
-
-const stateValue = {
-  // 头部搜索表单数据
-  searchFormList: [
-    {
-      componentName: 'Input',
-      name: 'a',
-      placeholder: '权限名称',
-    },
-    {
-      componentName: 'Input',
-      name: 'b',
-      placeholder: '权限编号',
-    },
-    {
-      componentName: 'Select',
-      name: 'c',
-      placeholder: '状态',
-      selectData: [],
-    },
-  ] as FormListCallType[],
-  cardHandleButtonList: [], // 卡片操作按钮
-  tableColumnsList: [], // 表格数据列表表头数据
-  // 新增编辑查看弹窗
-  handleModal: {
-    visible: false,
-    disable: false,
-    id: '',
-    title: '',
-    submitApi: handleBasicQtyList,
-    formList: [] as FormListCallType[],
-  },
-  // 图标弹窗
+interface StateType {
+  searchFormList: FormListCallType[]
+  cardHandleButtonList: CardButtonType[]
+  tableColumnsList: ColumnType<AnyObjectType>[]
+  handleModal: LayoutFormPropTypes
   iconModal: {
-    visible: false,
-    src: '',
-  },
+    visible: boolean
+    src: string
+  }
 }
 
 const BasicAuthMainList = () => {
+  const authBasic = GlobalConstant.buttonPermissions.basic // 基础权限
   const layoutTableRef = useRef<LayoutTableCallType>()
   const layoutFormModalRef = useRef<LayoutFormModalCallType>()
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_SEARCH_FORM_LIST: // 设置头部搜索表单数据
-        return {
-          ...state,
-          searchFormList: action.payload,
-        }
-      case ActionType.SET_CARD_HANDLE_BUTTON_LIST: // 设置卡片操作按钮
-        return {
-          ...state,
-          cardHandleButtonList: action.payload,
-        }
-      case ActionType.SET_TABLE_COLUMNS_LIST: // 设置表格数据列表表头数据
-        return {
-          ...state,
-          tableColumnsList: action.payload,
-        }
-      case ActionType.SET_HANDLE_MODAL: // 设置新增编辑查看弹窗数据
-        return {
-          ...state,
-          handleModal: {
-            ...state.handleModal,
-            ...action.payload,
+  const [state, setState] = useSetState<StateType>({
+    // 头部搜索表单数据
+    searchFormList: [
+      {
+        componentName: 'Input',
+        name: 'buttonCname',
+        placeholder: '权限名称',
+      },
+      {
+        componentName: 'Input',
+        name: 'buttonCode',
+        placeholder: '权限编号',
+      },
+      {
+        componentName: 'Select',
+        name: 'status',
+        placeholder: '状态',
+        selectData: statusData,
+      },
+    ],
+    cardHandleButtonList: [], // 卡片操作按钮
+    tableColumnsList: [], // 表格数据列表表头数据
+    // 新增编辑查看弹窗
+    handleModal: {
+      visible: false,
+      disable: false,
+      id: '',
+      title: '',
+      submitApi: handleBasicButtonList,
+      formList: [],
+    },
+    // 图标弹窗
+    iconModal: {
+      visible: false,
+      src: '',
+    },
+  })
+
+  /**
+   * @Description 获取详情
+   * @Author bihongbin
+   * @Date 2020-10-26 15:52:17
+   */
+  const getDetails = async (id: string) => {
+    if (layoutFormModalRef.current) {
+      layoutFormModalRef.current.setFormLoading(true)
+      try {
+        const result = await handleBasicButtonList(
+          {
+            id,
           },
-        }
-      case ActionType.SET_ICON_MODAL: // 设置图标弹窗数据
-        return {
-          ...state,
-          iconModal: {
-            ...state.iconModal,
-            ...action.payload,
-          },
-        }
+          'get',
+        )
+        layoutFormModalRef.current.setFormValues({
+          buttonCode: result.data.buttonCode,
+          buttonCname: result.data.buttonCname,
+          buttonAction: result.data.buttonAction,
+          sortSeq: result.data.sortSeq,
+          buttonTitle: result.data.buttonTitle,
+          startTime: moment(result.data.startTime),
+          endTime: moment(result.data.endTime),
+          groupFlag: String(result.data.groupFlag),
+          innerFlag: String(result.data.innerFlag),
+          publicFlag: String(result.data.publicFlag),
+          remark: result.data.remark,
+        })
+      } catch (error) {}
+      layoutFormModalRef.current.setFormLoading(false)
     }
-  }, stateValue)
-
-  /**
-   * @Description 设置新增编辑查看弹窗数据
-   * @Author bihongbin
-   * @Date 2020-08-07 15:36:34
-   */
-  const handleModalState = (data: Partial<StateType['handleModal']>) => {
-    dispatch({
-      type: ActionType.SET_HANDLE_MODAL,
-      payload: data,
-    })
-  }
-
-  /**
-   * @Description 设置图标弹窗相关
-   * @Author bihongbin
-   * @Date 2020-08-07 16:41:16
-   */
-  const handleIconState = (data: Partial<StateType['iconModal']>) => {
-    dispatch({
-      type: ActionType.SET_ICON_MODAL,
-      payload: data,
-    })
   }
 
   /**
@@ -141,11 +116,11 @@ const BasicAuthMainList = () => {
    * @Date 2020-08-07 15:44:58
    */
   useEffect(() => {
-    handleModalState({
-      formList: [
+    setState((prev) => {
+      prev.handleModal.formList = [
         {
           componentName: 'Input',
-          name: 'a2',
+          name: 'buttonCode',
           label: '权限编号',
           placeholder: '请输入权限编号',
           rules: [
@@ -158,7 +133,7 @@ const BasicAuthMainList = () => {
         },
         {
           componentName: 'Input',
-          name: 'a1',
+          name: 'buttonCname',
           label: '权限名称',
           placeholder: '请输入权限名称',
           rules: [
@@ -171,28 +146,21 @@ const BasicAuthMainList = () => {
         },
         {
           componentName: 'Input',
-          name: 'a3',
+          name: 'buttonAction',
           label: '操作标识',
           placeholder: '请输入操作标识',
           disabled: state.handleModal.disable,
         },
         {
           componentName: 'Input',
-          name: 'a4',
+          name: 'sortSeq',
           label: '排序序号',
           placeholder: '请输入排序序号',
           disabled: state.handleModal.disable,
         },
         {
           componentName: 'Input',
-          name: 'a5',
-          label: '状态',
-          placeholder: '请输入状态',
-          disabled: state.handleModal.disable,
-        },
-        {
-          componentName: 'Input',
-          name: 'a6',
+          name: 'buttonTitle',
           label: '标记说明',
           placeholder: '请输入标记说明',
           disabled: state.handleModal.disable,
@@ -209,15 +177,22 @@ const BasicAuthMainList = () => {
           label: '失效日期',
           disabled: state.handleModal.disable,
         },
+        // TODO 图标功能未做
         {
           componentName: 'HideInput',
-          name: 'ii',
+          name: 'buttonNormalImg',
           label: '图标',
+          disabled: state.handleModal.disable,
           render: () => {
             return (
               <div
                 className="mb-5"
-                onClick={() => handleIconState({ visible: true })}
+                onClick={() => {
+                  setState((prev) => {
+                    prev.iconModal.visible = true
+                    return prev
+                  })
+                }}
               >
                 <Avatar
                   className="pointer"
@@ -232,23 +207,6 @@ const BasicAuthMainList = () => {
               </div>
             )
           },
-          colProps: {
-            span: 24,
-          },
-        },
-        {
-          componentName: 'Switch',
-          name: 'a8',
-          label: '内部组织开关',
-          valuePropName: 'checked',
-          disabled: state.handleModal.disable,
-        },
-        {
-          componentName: 'Switch',
-          name: 'a9',
-          label: '是否公开',
-          valuePropName: 'checked',
-          disabled: state.handleModal.disable,
         },
         {
           componentName: 'TextArea',
@@ -259,9 +217,10 @@ const BasicAuthMainList = () => {
           placeholder: '请输入备注',
           disabled: state.handleModal.disable,
         },
-      ],
+      ]
+      return prev
     })
-  }, [state.handleModal.disable, state.iconModal.src])
+  }, [setState, state.handleModal.disable, state.iconModal.src])
 
   /**
    * @Description 设置卡片操作按钮数据
@@ -269,23 +228,25 @@ const BasicAuthMainList = () => {
    * @Date 2020-08-07 15:32:06
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_CARD_HANDLE_BUTTON_LIST,
-      payload: [
+    setState({
+      cardHandleButtonList: [
         {
           name: '新增',
+          authCode: authBasic.ADD,
+          icon: 'icon_list_add.png',
           clickConfirm: () => {
-            handleModalState({
-              visible: true,
-              disable: false,
-              id: '',
-              title: '新增基础权限',
+            setState((prev) => {
+              prev.handleModal.visible = true
+              prev.handleModal.disable = false
+              prev.handleModal.id = ''
+              prev.handleModal.title = '新增基础权限'
+              return prev
             })
           },
         },
       ],
     })
-  }, [])
+  }, [authBasic.ADD, setState])
 
   /**
    * @Description 设置表格列表表头数据
@@ -293,122 +254,143 @@ const BasicAuthMainList = () => {
    * @Date 2020-08-07 15:24:52
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_TABLE_COLUMNS_LIST,
-      payload: [
+    setState({
+      tableColumnsList: [
         {
-          width: 60,
+          width: 80,
           title: '序号',
           dataIndex: 'sortSeq',
+          ellipsis: true,
         },
         {
           title: '名称',
-          dataIndex: 'd',
+          dataIndex: 'buttonCname',
+          ellipsis: true,
         },
         {
           title: '编号',
-          dataIndex: 'e',
+          dataIndex: 'buttonCode',
+          ellipsis: true,
         },
         {
           title: '状态',
-          dataIndex: 'f',
+          dataIndex: 'status',
+          ellipsis: true,
+          render: (value: number) => {
+            const result = statusData.find(
+              (item) => parseInt(item.value) === value,
+            )
+            return result && result.label
+          },
         },
         {
           title: '操作标识',
-          dataIndex: 'g',
+          dataIndex: 'buttonAction',
+          ellipsis: true,
         },
         {
           title: '生效日期',
           dataIndex: 'startTime',
+          ellipsis: true,
         },
         {
           title: '失效日期',
           dataIndex: 'endTime',
+          ellipsis: true,
         },
         {
           title: '操作',
           dataIndex: 'status',
+          fixed: 'right',
           width: 170,
           render: (value: number, record: any) => {
-            const operatingData = []
+            const operatingData: TableOperateButtonType[] = []
             // 查看
             operatingData.push({
               name: '查看',
-              onClick: () => {
-                handleModalState({
-                  visible: true,
-                  disable: true,
-                  id: record.id,
-                  title: '查看基础权限',
-                })
-              },
+              authCode: authBasic.QUERY,
               svg: 'table_see.png',
-            })
-            // 编辑
-            operatingData.push({
-              name: '编辑',
               onClick: () => {
-                handleModalState({
-                  visible: true,
-                  disable: false,
-                  id: record.id,
-                  title: '编辑基础权限',
+                setState((prev) => {
+                  prev.handleModal.visible = true
+                  prev.handleModal.disable = true
+                  prev.handleModal.id = record.id
+                  prev.handleModal.title = '查看基础权限'
+                  return prev
                 })
+                getDetails(record.id)
               },
-              svg: 'table_edit.png',
             })
-            // 删除
-            operatingData.push({
-              name: '删除',
-              onClick: () => {
-                if (layoutTableRef.current) {
-                  handleRowDelete(
-                    [record.id],
-                    deleteBasicQtyList,
-                    layoutTableRef.current.getTableList,
-                  )
-                }
-              },
-              svg: 'table_delete.png',
-            })
-            // 更多
-            operatingData.push({
-              name: '更多',
-              type: 'more',
-              svg: 'table_more.png',
-              moreList: [
-                {
-                  name:
-                    (value === 1 && '禁用') ||
-                    (value === 2 && '启用') ||
-                    '未知',
-                  onClick: () => {
-                    if (layoutTableRef.current) {
-                      handleRowEnableDisable(
-                        {
-                          id: record.id,
-                          status: (value === 1 && 2) || (value === 2 && 1) || 0,
-                        },
-                        setBasicQtyStatus,
-                        layoutTableRef.current.getTableList,
-                      )
-                    }
-                  },
+            if (value > 0) {
+              // 编辑
+              operatingData.push({
+                name: '编辑',
+                authCode: authBasic.EDIT,
+                svg: 'table_edit.png',
+                onClick: () => {
+                  setState((prev) => {
+                    prev.handleModal.visible = true
+                    prev.handleModal.disable = false
+                    prev.handleModal.id = record.id
+                    prev.handleModal.title = '编辑基础权限'
+                    return prev
+                  })
+                  getDetails(record.id)
                 },
-              ],
-            })
+              })
+              // 挂起和启用
+              operatingData.push({
+                name: value === 1 ? '启用' : '挂起',
+                authCode: authBasic.ENABLEANDSUSPEND,
+                svg: value === 1 ? 'table_enable.png' : 'table_locking.png',
+                onClick: () => {
+                  if (layoutTableRef.current) {
+                    handleRowEnableDisable(
+                      {
+                        id: [record.id],
+                        status: record.status,
+                      },
+                      switchBasicButtonRowsList,
+                      layoutTableRef.current.getTableList,
+                      ['', '挂起', '启用'],
+                    )
+                  }
+                },
+              })
+              // 删除
+              operatingData.push({
+                name: '删除',
+                authCode: authBasic.DELETE,
+                svg: 'table_delete.png',
+                onClick: () => {
+                  if (layoutTableRef.current) {
+                    handleRowDelete(
+                      [record.id],
+                      handleBasicButtonList,
+                      layoutTableRef.current.getTableList,
+                    )
+                  }
+                },
+              })
+            }
             return <TableOperate operateButton={operatingData} />
           },
         },
       ],
     })
-  }, [])
+  }, [
+    authBasic.DELETE,
+    authBasic.EDIT,
+    authBasic.ENABLEANDSUSPEND,
+    authBasic.QUERY,
+    setState,
+  ])
 
   return (
     <>
       <LayoutTableList
         ref={layoutTableRef}
-        api={getBasicQtyList}
+        api={getBasicButtonList}
         searchFormList={state.searchFormList}
         autoGetList
         cardTopButton={state.cardHandleButtonList}
@@ -417,25 +399,37 @@ const BasicAuthMainList = () => {
           rowType: 'checkbox',
           list: state.tableColumnsList,
           tableConfig: {
-            scroll: { y: 500 },
+            scroll: { x: 1300, y: 500 },
           },
         }}
       />
       <LayoutFormModal
         ref={layoutFormModalRef}
-        onCancel={() => handleModalState({ visible: false })}
+        onCancel={() => {
+          setState((prev) => {
+            prev.handleModal.visible = false
+            return prev
+          })
+        }}
+        onConfirm={() => layoutTableRef.current?.getTableList()}
         {...state.handleModal}
       />
       <IconSelectionModal
         {...state.iconModal}
-        onCancel={() => handleIconState({ visible: false })}
+        onCancel={() => {
+          setState((prev) => {
+            prev.iconModal.visible = false
+            return prev
+          })
+        }}
         onConfirm={(item) => {
           layoutFormModalRef.current?.setFormValues({
             ii: item.src,
           })
-          handleIconState({
-            visible: false,
-            src: item.src,
+          setState((prev) => {
+            prev.iconModal.visible = false
+            prev.iconModal.src = item.src
+            return prev
           })
         }}
       />

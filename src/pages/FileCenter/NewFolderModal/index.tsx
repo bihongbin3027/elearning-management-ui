@@ -1,42 +1,31 @@
-import React, { useReducer, useRef, useContext } from 'react'
+import React, { useRef, useEffect, useContext } from 'react'
+import { useSelector } from 'react-redux'
+import { useLocation } from 'react-router-dom'
+import { parse } from 'query-string'
 import { Modal, Row, Button, Col, message } from 'antd'
+import useSetState from '@/hooks/useSetState'
 import GenerateForm, { FormCallType } from '@/components/GenerateForm'
-import {
-  FileManageContext,
-  ActionType as ParentActionType,
-} from '@/pages/FileCenter'
+import { FileManageContext } from '@/pages/FileCenter'
+import { RootStateType } from '@/store/rootReducer'
+import { handleFileFolderList, handleFileList } from '@/api/fileManage'
 
-interface Action {
-  type: ActionType
-  payload: any
+interface PropTypes {
+  getFileFolderListData?: () => Promise<void>
 }
 
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_SAVE_LOADING = '[SetSaveLoading Action]',
+interface StateType {
+  saveLoading: boolean
 }
 
-const stateValue = {
-  saveLoading: false, // 保存loading
-}
-
-const NewFolderView = () => {
-  const { mainState, mainDispatch } = useContext(FileManageContext)
+const NewFolderView = (props: PropTypes) => {
+  const location = useLocation()
+  const queryUrl = parse(location.search)
+  const auth = useSelector((state: RootStateType) => state.auth)
+  const { mainState, mainSetState } = useContext(FileManageContext)
   const formRef = useRef<FormCallType>()
-  const [state, dispatch] = useReducer<
-    (state: StateType, action: Action) => StateType
-  >((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_SAVE_LOADING: // 保存loading
-        return {
-          ...state,
-          saveLoading: action.payload,
-        }
-      default:
-        return state
-    }
-  }, stateValue)
+  const [state, setState] = useSetState<StateType>({
+    saveLoading: false, // 保存loading
+  })
 
   /**
    * @Description 关闭弹窗
@@ -44,12 +33,9 @@ const NewFolderView = () => {
    * @Date 2020-08-13 11:20:57
    */
   const handleClose = () => {
-    mainDispatch({
-      type: ParentActionType.SET_NEW_FOLDER_MODAL_DATA,
-      payload: {
-        ...mainState.newFolderModal,
-        visible: false,
-      },
+    mainSetState((prev) => {
+      prev.newFolderModal.visible = false
+      return prev
     })
   }
 
@@ -60,56 +46,100 @@ const NewFolderView = () => {
    */
   const handleModalSave = async () => {
     if (formRef.current) {
-      const result = await formRef.current.formSubmit()
-      if (result) {
+      const formValue = await formRef.current.formSubmit()
+      if (formValue) {
+        // 打开按钮loading
+        setState({
+          saveLoading: true,
+        })
         if (mainState.newFolderModal.id) {
-          dispatch({
-            type: ActionType.SET_SAVE_LOADING,
-            payload: true,
-          })
-          setTimeout(() => {
-            dispatch({
-              type: ActionType.SET_SAVE_LOADING,
-              payload: false,
-            })
-            // 修改当前预览文件
-            mainDispatch({
-              type: ParentActionType.SET_OPEN_PREVIEW,
-              payload: {
-                ...mainState.openPreview,
-                current: {
-                  ...mainState.openPreview.current,
-                  originalFileName: result.originalFileName,
-                },
-                list: mainState.openPreview.list.map((item) => {
-                  if (item.id === mainState.openPreview.current.id) {
-                    item.originalFileName = result.originalFileName
-                  }
-                  return item
-                }),
+          if (mainState.openPreview.current.fileExt) {
+            // 修改文件
+            await handleFileList(
+              {
+                id: mainState.newFolderModal.id,
+                originalFileName: formValue.originalFileName,
               },
+              'put',
+            )
+          } else {
+            // 修改文件夹
+            await handleFileFolderList(
+              {
+                id: mainState.newFolderModal.id,
+                originalFileName: formValue.originalFileName,
+              },
+              'put',
+            )
+          }
+          mainSetState((prev) => {
+            const openPreview = { ...prev.openPreview }
+            // 修改当前预览文件
+            openPreview.current.originalFileName = formValue.originalFileName
+            // 在主列表修改对应的改过的文件
+            openPreview.list = mainState.openPreview.list.map((item) => {
+              if (item.id === mainState.openPreview.current.id) {
+                item.originalFileName = formValue.originalFileName
+              }
+              return item
             })
             // 修改主页面文件
-            mainDispatch({
-              type: ParentActionType.SET_FILE_LIST,
-              payload: mainState.fileList.map((item) => {
-                if (item.id === mainState.openPreview.current.id) {
-                  item.originalFileName = result.originalFileName
-                }
-                return item
-              }),
+            prev.fileList = mainState.fileList.map((item) => {
+              if (item.id === mainState.openPreview.current.id) {
+                item.originalFileName = formValue.originalFileName
+              }
+              return item
             })
-            message.warn('修改成功', 1.5)
-            handleClose() // 关闭弹窗
-          }, 1000)
+            return prev
+          })
+          // 关闭按钮loading
+          setState({
+            saveLoading: false,
+          })
+          message.warn('修改成功', 1.5)
+          handleClose() // 关闭弹窗
         } else {
-          setTimeout(() => {
-            console.log('创建成功')
-          }, 1000)
+          // 创建文件夹
+          await handleFileFolderList(
+            {
+              cId: auth.user?.cid,
+              parentId: queryUrl.parentId,
+              name: formValue.originalFileName,
+            },
+            'post',
+          )
+          // 关闭按钮loading
+          setState({
+            saveLoading: false,
+          })
+          message.success('创建成功', 1.5)
+          handleClose() // 关闭弹窗
+          if (props.getFileFolderListData) {
+            props.getFileFolderListData() // 更新文件夹列表
+          }
         }
       }
     }
   }
+
+  /**
+   * @Description 设置文件夹或文件默认名称（只有编辑状态才设置）
+   * @Author bihongbin
+   * @Date 2020-11-16 15:38:02
+   */
+  useEffect(() => {
+    if (mainState.newFolderModal.visible) {
+      if (mainState.newFolderModal.id) {
+        setTimeout(() => {
+          if (formRef.current) {
+            formRef.current.formSetValues({
+              originalFileName: mainState.openPreview.current.originalFileName,
+            })
+          }
+        }, 100)
+      }
+    }
+  }, [mainState])
 
   return (
     <Modal
@@ -139,9 +169,9 @@ const NewFolderView = () => {
       <Row className="mt-10 mb-5" justify="center">
         <Col>
           <Button
-            className="ml-5"
-            size="large"
+            className="font-14"
             type="primary"
+            size="large"
             loading={state.saveLoading}
             onClick={handleModalSave}
           >

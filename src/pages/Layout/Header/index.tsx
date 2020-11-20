@@ -1,5 +1,5 @@
-import React, { useReducer, useMemo } from 'react'
-import { useHistory } from 'react-router-dom'
+import React, { useMemo } from 'react'
+import { useHistory, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   Menu,
@@ -19,98 +19,150 @@ import { MenuInfo } from 'rc-menu/lib/interface'
 import {
   LockOutlined,
   LogoutOutlined,
-  ExclamationCircleOutlined,
   LeftOutlined,
   RightOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import authStore from '@/store/module/auth'
 import { RootStateType } from '@/store/rootReducer'
+import useSetState from '@/hooks/useSetState'
+import LayoutFormModal, {
+  LayoutFormPropTypes,
+} from '@/components/LayoutFormModal'
 import { SxyButton } from '@/style/module/button'
 import { SxyIcon } from '@/style/module/icon'
 import { AnyObjectType } from '@/typings'
 import { SetUserMenuPayloadType } from '@/store/module/auth/types'
 import { GlobalConstant } from '@/config'
+import { queryCurrentMenuObject } from '@/utils'
+import { resetUserPassword, logout } from '@/api/layout'
 import { HeaderStyle } from '@/pages/Layout/Header/style'
 
 const { confirm } = Modal
 const { Text } = Typography
 
-type ReducerType = (state: StateType, action: Action) => StateType
-interface Action {
-  type: ActionType
-  payload: any
-}
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_HEADER_NAV = '[SetHeaderNav Action]',
-  SET_PASSWORD_MODAL = '[SetPasswordModal Action]',
-  SET_CLOSE_TABS_PAGE = '[SetCloseTabsPage Action]',
-}
-
-const stateValue = {
-  // 头部菜单
-  headerNav: [
-    {
-      title: '下载中心',
-      width: 14,
-      height: 14,
-      icon: 'icon_head_download.png',
-    },
-    {
-      title: '帮助中心',
-      width: 14,
-      height: 14,
-      icon: 'icon_head_help.png',
-    },
-    {
-      title: '公众号',
-      width: 16,
-      height: 14,
-      icon: 'icon_head_chat.png',
-    },
-  ],
-  // 修改密码模态窗
+interface StateType {
+  headerNav: {
+    title: string
+    width: number
+    height: number
+    icon: string
+  }[]
+  userInfoModal: LayoutFormPropTypes
   passwordModal: {
-    visible: false,
-    saveLoading: false,
-  },
-  // 关闭全部tab菜单
-  closeTabsPage: false,
+    visible: boolean
+    saveLoading: boolean
+  }
+  closeTabsPage: boolean
 }
 
 const HeaderBox = () => {
+  const location = useLocation()
   const history = useHistory()
   const dispatchRedux = useDispatch()
-  const { user, tabLayout, openSider } = useSelector(
+  const { user, tabLayout, systemInfo, openSider } = useSelector(
     (state: RootStateType) => ({
       ...state.auth,
       ...state.layout,
     }),
   )
   const [editPasswordForm] = Form.useForm() // 修改密码模态框表单
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_HEADER_NAV: // 设置头部菜单
-        return {
-          ...state,
-          headerNav: action.payload,
-        }
-      case ActionType.SET_PASSWORD_MODAL: // 设置修改密码模态窗数据
-        return {
-          ...state,
-          passwordModal: {
-            ...state.passwordModal,
-            ...action.payload,
-          },
-        }
-      case ActionType.SET_CLOSE_TABS_PAGE: // 设置关闭全部tab菜单
-        return {
-          ...state,
-          closeTabsPage: action.payload,
-        }
-    }
-  }, stateValue)
+  const [state, setState] = useSetState<StateType>({
+    // 头部菜单
+    headerNav: [
+      {
+        title: '下载中心',
+        width: 14,
+        height: 14,
+        icon: 'icon_head_download.png',
+      },
+      {
+        title: '帮助中心',
+        width: 14,
+        height: 14,
+        icon: 'icon_head_help.png',
+      },
+      {
+        title: '公众号',
+        width: 16,
+        height: 14,
+        icon: 'icon_head_chat.png',
+      },
+    ],
+    // 个人信息弹窗
+    userInfoModal: {
+      visible: false,
+      disable: true,
+      title: '我的基本信息',
+      formList: [
+        {
+          componentName: 'Input',
+          name: 'cname',
+          label: '姓名',
+          disabled: true,
+        },
+        {
+          componentName: 'Input',
+          name: 'userName',
+          label: '用户名',
+          disabled: true,
+        },
+        {
+          componentName: 'Input',
+          name: 'orgName',
+          label: '部门',
+          disabled: true,
+        },
+        {
+          componentName: 'Input',
+          name: 'workNumber',
+          label: '工号',
+          disabled: true,
+        },
+        {
+          componentName: 'Input',
+          name: 'mobilePhone',
+          label: '手机号码',
+          disabled: true,
+        },
+        {
+          componentName: 'Input',
+          name: 'email',
+          label: '电子邮箱',
+          disabled: true,
+        },
+        {
+          componentName: 'Input',
+          name: 'workDuty',
+          label: '职位',
+          disabled: true,
+        },
+        {
+          componentName: 'Input',
+          name: 'roleNames',
+          label: '角色',
+          disabled: true,
+        },
+      ],
+    },
+    // 修改密码模态窗
+    passwordModal: {
+      visible: false,
+      saveLoading: false,
+    },
+    // 关闭全部tab菜单
+    closeTabsPage: false,
+  })
+
+  /**
+   * @Description 根据url查到当前路由对象
+   * @Author bihongbin
+   * @Date 2020-11-04 18:29:04
+   */
+  const currentMenuMemo = useMemo(
+    () => queryCurrentMenuObject(tabLayout.tabList, location.pathname),
+    [location.pathname, tabLayout.tabList],
+  )
 
   /**
    * @Description 修改密码模态窗参数
@@ -137,11 +189,56 @@ const HeaderBox = () => {
    * @Date 2020-09-10 14:56:11
    */
   const handleDropdownCloseTab = (e: MenuInfo) => {
-    console.log('当前选择：', e.key)
-    dispatch({
-      type: ActionType.SET_CLOSE_TABS_PAGE,
-      payload: false,
+    // 关闭所有，跳转到首页
+    if (e.key === 'all') {
+      const filterTabList = tabLayout.tabList.filter((item) => item.id === '-1')
+      dispatchRedux(
+        authStore.actions.setTopTab({
+          tabList: filterTabList,
+        }),
+      )
+      history.push('/index')
+    }
+    // 关闭当前页
+    if (e.key === 'current') {
+      // 不可关闭首页
+      if (currentMenuMemo.currentMenu) {
+        if (currentMenuMemo.currentMenu.navigateUrl !== '/index') {
+          closeCurrentTab(currentMenuMemo.currentMenu, currentMenuMemo.index)
+        }
+      }
+    }
+    setState({
+      closeTabsPage: false,
     })
+  }
+
+  /**
+   * @Description 切换tab
+   * @Author bihongbin
+   * @Date 2020-11-02 15:39:46
+   */
+  const switchPage = (index: number) => {
+    history.push(tabLayout.tabList[index].navigateUrl)
+  }
+
+  /**
+   * @Description 关闭当前页
+   * @Date 2020-11-03 15:54:24
+   */
+  const closeCurrentTab = (item: SetUserMenuPayloadType, index: number) => {
+    const filterList = tabLayout.tabList.filter(
+      (k) => k.navigateUrl !== item.navigateUrl,
+    )
+    if (index <= currentMenuMemo.index) {
+      currentMenuMemo.index = currentMenuMemo.index - 1
+    }
+    dispatchRedux(
+      authStore.actions.setTopTab({
+        tabList: filterList,
+      }),
+    )
+    history.push(filterList[currentMenuMemo.index].navigateUrl)
   }
 
   /**
@@ -155,18 +252,7 @@ const HeaderBox = () => {
     e: React.MouseEvent,
   ) => {
     e.stopPropagation()
-    let currentIndex = tabLayout.current
-    const filterList = tabLayout.tabList.filter((k) => k.path !== item.path)
-    if (index <= currentIndex) {
-      currentIndex = currentIndex - 1
-    }
-    dispatchRedux(
-      authStore.actions.setTopTab({
-        current: currentIndex,
-        tabList: filterList,
-      }),
-    )
-    history.push(filterList[currentIndex].path)
+    closeCurrentTab(item, index)
   }
 
   /**
@@ -177,25 +263,53 @@ const HeaderBox = () => {
    */
   const handleDropdownMenu = (e: AnyObjectType) => {
     const { key } = e
+    if (key === 'user') {
+      setState((prev) => {
+        prev.userInfoModal.visible = true
+        return prev
+      })
+    }
     if (key === 'password') {
-      dispatch({
-        type: ActionType.SET_PASSWORD_MODAL,
-        payload: {
-          visible: true,
-        },
+      setState((prev) => {
+        prev.passwordModal.visible = true
+        return prev
       })
     }
     if (key === 'logout') {
       confirm({
         title: '提示',
-        icon: <ExclamationCircleOutlined />,
+        width: 360,
+        className: 'confirm-modal',
+        centered: true,
         content: '确定退出吗？',
         onOk() {
-          dispatchRedux(authStore.actions.logout())
-          history.push('/login')
+          return new Promise((resolve, reject) => {
+            logout()
+              .then(() => {
+                history.push('/login')
+                resolve()
+              })
+              .catch(() => {
+                reject()
+              })
+          })
         },
       })
     }
+  }
+
+  /**
+   * @Description 取消修改密码
+   * @Author bihongbin
+   * @Date 2020-10-12 10:26:39
+   */
+  const handlePasswordModalOkCancel = () => {
+    editPasswordForm.resetFields()
+    setState((prev) => {
+      prev.passwordModal.visible = false
+      prev.passwordModal.saveLoading = false
+      return prev
+    })
   }
 
   /**
@@ -204,24 +318,28 @@ const HeaderBox = () => {
    * @Date 2020-08-19 12:06:13
    */
   const handlePasswordModalOk = () => {
-    editPasswordForm.validateFields().then((values: AnyObjectType) => {
-      dispatch({
-        type: ActionType.SET_PASSWORD_MODAL,
-        payload: {
-          saveLoading: true,
-        },
+    editPasswordForm.validateFields().then(async (values: AnyObjectType) => {
+      setState((prev) => {
+        prev.passwordModal.saveLoading = true
+        return prev
       })
-      setTimeout(() => {
+      try {
+        await resetUserPassword({
+          userId: user?.id || '',
+          password: values.password,
+        })
         message.success('修改成功', 1.5)
         editPasswordForm.resetFields()
-        dispatch({
-          type: ActionType.SET_PASSWORD_MODAL,
-          payload: {
-            visible: false,
-            saveLoading: false,
-          },
+        setState((prev) => {
+          prev.passwordModal.visible = false
+          prev.passwordModal.saveLoading = false
+          return prev
         })
-      }, 500)
+      } catch (error) {}
+      setState((prev) => {
+        prev.passwordModal.saveLoading = false
+        return prev
+      })
     })
   }
 
@@ -237,7 +355,7 @@ const HeaderBox = () => {
         <Row className="header-top" align="middle" justify="space-between">
           <Col>
             <Space size={90}>
-              <h2>机构名称</h2>
+              <h2>{systemInfo.sysName}</h2>
             </Space>
           </Col>
           <Col>
@@ -262,6 +380,10 @@ const HeaderBox = () => {
                 placement="bottomRight"
                 overlay={
                   <Menu onClick={handleDropdownMenu}>
+                    <Menu.Item key="user">
+                      <UserOutlined />
+                      个人信息
+                    </Menu.Item>
                     <Menu.Item key="password">
                       <LockOutlined />
                       修改密码
@@ -277,7 +399,7 @@ const HeaderBox = () => {
                   <Row align="middle" gutter={8}>
                     <Col>
                       <Text type="secondary">hi～</Text>
-                      {user?.fullname}
+                      {user?.userName}
                     </Col>
                     <Col>
                       <Avatar
@@ -299,14 +421,19 @@ const HeaderBox = () => {
             <Space className="header-tab-scroll" size={10}>
               {tabLayout.tabList.map((item, index) => (
                 <SxyButton
-                  mode={index === tabLayout.current ? 'primary' : 'dark-grey'}
+                  mode={
+                    index === currentMenuMemo.index ? 'primary' : 'dark-grey'
+                  }
                   font={12}
-                  key={item.path}
+                  key={item.id}
+                  onClick={() => {
+                    switchPage(index)
+                  }}
                 >
                   <Row align="middle">
                     {item.name}
-                    {item.path !== '/index' ? (
-                      index === tabLayout.current ? (
+                    {item.navigateUrl !== '/index' ? (
+                      index === currentMenuMemo.index ? (
                         <SxyIcon
                           className="ml-1"
                           width={12}
@@ -329,30 +456,6 @@ const HeaderBox = () => {
                   </Row>
                 </SxyButton>
               ))}
-              <SxyButton mode="dark-grey" font={12}>
-                <Row align="middle">
-                  报表查询
-                  <SxyIcon
-                    className="ml-1"
-                    width={6}
-                    height={6}
-                    name="icon_label_delete_unchecked.png"
-                    title="关闭"
-                  />
-                </Row>
-              </SxyButton>
-              <SxyButton mode="dark-grey" font={12}>
-                <Row align="middle">
-                  排课
-                  <SxyIcon
-                    className="ml-1"
-                    width={6}
-                    height={6}
-                    name="icon_label_delete_unchecked.png"
-                    title="关闭"
-                  />
-                </Row>
-              </SxyButton>
             </Space>
             <LeftOutlined className="tab-cur-left pointer" />
             <RightOutlined className="tab-cur-right pointer" />
@@ -370,9 +473,8 @@ const HeaderBox = () => {
                 </Menu>
               }
               onVisibleChange={(flag) => {
-                dispatch({
-                  type: ActionType.SET_CLOSE_TABS_PAGE,
-                  payload: flag,
+                setState({
+                  closeTabsPage: flag,
                 })
               }}
               visible={state.closeTabsPage}
@@ -388,26 +490,34 @@ const HeaderBox = () => {
           </Col>
         </Row>
       </HeaderStyle>
+      <LayoutFormModal
+        formConfig={{
+          initialValues: user,
+        }}
+        onCancel={() => {
+          setState((prev) => {
+            prev.userInfoModal.visible = false
+            return prev
+          })
+        }}
+        {...state.userInfoModal}
+      />
       <Modal
         width={450}
         title="修改密码"
         visible={state.passwordModal.visible}
-        confirmLoading={state.passwordModal.saveLoading}
-        onOk={handlePasswordModalOk}
-        onCancel={() => {
-          editPasswordForm.resetFields()
-          dispatch({
-            type: ActionType.SET_PASSWORD_MODAL,
-            payload: {
-              visible: false,
-              saveLoading: false,
-            },
-          })
-        }}
+        onCancel={handlePasswordModalOkCancel}
+        footer={null}
         maskClosable={false}
       >
-        <Form name="edit-password-modal" {...formItemLayout}>
+        <Form
+          className="form-ash-theme form-large-font14"
+          name="edit-password-modal"
+          size="large"
+          {...formItemLayout}
+        >
           <Form.Item
+            className="mb-5"
             name="password"
             label="新密码"
             rules={[
@@ -443,6 +553,26 @@ const HeaderBox = () => {
             <Input.Password />
           </Form.Item>
         </Form>
+        <Row className="mt-10 mb-5" justify="center">
+          <Col>
+            <Button
+              className="font-14"
+              size="large"
+              onClick={handlePasswordModalOkCancel}
+            >
+              取消
+            </Button>
+            <Button
+              className="font-14 ml-5"
+              size="large"
+              type="primary"
+              loading={state.passwordModal.saveLoading}
+              onClick={handlePasswordModalOk}
+            >
+              确定
+            </Button>
+          </Col>
+        </Row>
       </Modal>
     </>
   )

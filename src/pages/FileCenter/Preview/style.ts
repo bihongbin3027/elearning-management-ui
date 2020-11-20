@@ -28,6 +28,9 @@ export const FilePreview = styled.div`
         }
       }
     }
+    img {
+      max-width: 80%;
+    }
   }
   .preview-content {
     text-align: center;

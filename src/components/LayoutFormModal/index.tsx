@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-08-01 15:13:11
  * @LastEditors bihongbin
- * @LastEditTime 2020-09-19 15:48:10
+ * @LastEditTime 2020-11-12 18:38:43
  */
 
 import React, {
@@ -22,9 +22,9 @@ import GenerateForm, {
   FormCallType,
   FormListType,
 } from '@/components/GenerateForm'
-import { AnyObjectType, AjaxResultType } from '@/typings'
+import { AnyObjectType, SubmitApiType } from '@/typings'
 
-export interface PropFormTypes {
+export interface LayoutFormPropTypes {
   visible: boolean // 打开或关闭
   disable?: boolean // 表单是否禁用
   id?: string | null | undefined
@@ -34,8 +34,8 @@ export interface PropFormTypes {
   submitRemoveField?: string[] // 提交表单需要移除的参数
   submitExtraParameters?: AnyObjectType // 需要提交表单的额外参数
   switchTransform?: string[] // 开关组件值转换成0和1
-  submitApi?: (data: any, method: 'put' | 'post') => Promise<AjaxResultType> // 提交表单的接口
-  onCancel: () => void // 关闭弹窗回调
+  submitApi?: SubmitApiType // 提交表单的接口
+  onCancel?: () => void // 关闭弹窗回调
   onConfirm?: (data: AnyObjectType) => void // 确定或保存回调
   formList: FormListType[] // 表单数据
   formConfig?: FormProps // 支持antd Form组件官方传参所有类型
@@ -45,6 +45,7 @@ export interface PropFormTypes {
 // 导出该组件可调用的方法类型
 export interface LayoutFormModalCallType {
   setFormLoading: (data: boolean) => void
+  setFormSaveLoading: (data: boolean) => void
   setFormFields: (fields: FieldData[]) => void
   setFormValues: (values: AnyObjectType) => void
 }
@@ -72,7 +73,7 @@ const stateValue = {
   disabled: false, // 表单是否可编辑，当不可编辑不能显示保存按钮
 }
 
-const LayoutFormModal = (props: PropFormTypes, ref: any) => {
+const LayoutFormModal = (props: LayoutFormPropTypes, ref: any) => {
   const formRef = useRef<FormCallType>() // 表单实例
   const [state, dispatch] = useReducer<ReducerType>((state, action) => {
     switch (action.type) {
@@ -97,6 +98,18 @@ const LayoutFormModal = (props: PropFormTypes, ref: any) => {
   }, stateValue)
 
   /**
+   * @Description 设置保存loading
+   * @Author bihongbin
+   * @Date 2020-10-22 11:22:49
+   */
+  const handleSaveLoadingState = (data: StateType['saveLoading']) => {
+    dispatch({
+      type: ActionType.SET_SAVE_LOADING,
+      payload: data,
+    })
+  }
+
+  /**
    * @Description 提交表单
    * @Author bihongbin
    * @Date 2020-08-01 15:38:26
@@ -112,10 +125,7 @@ const LayoutFormModal = (props: PropFormTypes, ref: any) => {
         message.warn('生效日期不能大于失效日期', 1.5)
         return
       }
-      dispatch({
-        type: ActionType.SET_SAVE_LOADING,
-        payload: true,
-      })
+      handleSaveLoadingState(true)
       try {
         let result: AnyObjectType = {}
         let msg: string
@@ -142,7 +152,8 @@ const LayoutFormModal = (props: PropFormTypes, ref: any) => {
             }
           }
         }
-        formParams = _.pickBy(formParams, _.identity)
+        formParams = _.omitBy(formParams, _.isNil)
+        console.log('表单提交参数：', JSON.stringify(formParams))
         if (props.submitApi) {
           if (props.id) {
             formParams.id = props.id
@@ -158,19 +169,18 @@ const LayoutFormModal = (props: PropFormTypes, ref: any) => {
               props.onConfirm(result)
             }
             message.success(msg, 1.5)
-            props.onCancel()
+            props.onCancel && props.onCancel()
           }
+          handleSaveLoadingState(false)
         } else {
           // 确定或保存回调
           if (props.onConfirm) {
             props.onConfirm(formParams)
           }
         }
-      } catch (error) {}
-      dispatch({
-        type: ActionType.SET_SAVE_LOADING,
-        payload: false,
-      })
+      } catch (error) {
+        handleSaveLoadingState(false)
+      }
     }
   }
 
@@ -198,6 +208,10 @@ const LayoutFormModal = (props: PropFormTypes, ref: any) => {
         type: ActionType.SET_LOADING,
         payload: data,
       })
+    },
+    // 设置保存loading
+    setFormSaveLoading: (data) => {
+      handleSaveLoadingState(data)
     },
     // 设置一组字段状态
     setFormFields: (fields) => {
@@ -246,7 +260,7 @@ const LayoutFormModal = (props: PropFormTypes, ref: any) => {
               <Button
                 className="font-14"
                 size="large"
-                onClick={() => props.onCancel()}
+                onClick={() => props.onCancel && props.onCancel()}
               >
                 取消
               </Button>

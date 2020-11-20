@@ -1,4 +1,6 @@
-import React, { useReducer, useEffect } from 'react'
+// TODO 相关页面需要这个弹窗的功能还没做
+
+import React, { useEffect } from 'react'
 import {
   Modal,
   Tag,
@@ -10,122 +12,68 @@ import {
   Spin,
   Card,
 } from 'antd'
+import useSetState from '@/hooks/useSetState'
 import TreeNode from '@/components/Tree'
+import { TreeType } from '@/components/Tree/interface'
+import { AnyObjectType } from '@/typings'
 
 const { Panel } = Collapse
 
 interface PropType {
   visible: boolean
+  loading: boolean
+  treeList: TreeType[]
+  companyList: AnyObjectType[]
   onCancel: () => void
 }
 
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_LOADING = '[SetLoading Action]',
-  SET_BASIC_MENU = '[SetBasicMenu Action]',
-}
-
-const stateValue = {
-  loading: false, // 弹窗全局显示loading
-  basicMenu: [], // 基础菜单数据
+interface StateType {
+  loading: boolean
+  basicMenu: TreeType[]
+  currentTreeRow: AnyObjectType
+  companyList: AnyObjectType[]
 }
 
 const PermissionsView = (props: PropType) => {
-  const [state, dispatch] = useReducer<
-    (state: StateType, action: Action) => StateType
-  >((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_LOADING: // 设置全局显示loading
-        return {
-          ...state,
-          loading: action.payload,
-        }
-      case ActionType.SET_BASIC_MENU: // 设置基础菜单数据
-        return {
-          ...state,
-          basicMenu: action.payload,
-        }
-      default:
-        return state
-    }
-  }, stateValue)
+  const [state, setState] = useSetState<StateType>({
+    loading: false, // 弹窗全局显示loading
+    basicMenu: [], // 基础菜单数据
+    currentTreeRow: {}, // 树选中的数据
+    companyList: [], // 公司数据
+  })
 
+  /**
+   * @Description 设置loading
+   * @Author bihongbin
+   * @Date 2020-10-20 11:35:22
+   */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_BASIC_MENU,
-      payload: [
-        {
-          title: '华旅云创科技有限公司',
-          key: '0-0',
-          isLocked: false,
-          children: [
-            {
-              title: '研发部',
-              key: '0-0-1',
-              isLocked: false,
-              children: [
-                {
-                  title: '技术组',
-                  key: '0-0-1-0',
-                  isLocked: false,
-                },
-                {
-                  title: '运维组',
-                  key: '0-0-1-1',
-                  isLocked: true,
-                },
-                {
-                  title: '测试组',
-                  key: '0-0-1-2',
-                  isLocked: false,
-                },
-              ],
-            },
-            {
-              title: '销售部',
-              key: '0-0-2',
-              isLocked: false,
-            },
-          ],
-        },
-        {
-          title: '森鑫源实业发展有限公司',
-          key: '0-1',
-          isLocked: false,
-          children: [
-            {
-              title: '财务部',
-              key: '0-1-1',
-              isLocked: false,
-              children: [
-                {
-                  title: '结算部',
-                  key: '0-1-1-0',
-                  isLocked: false,
-                },
-                {
-                  title: '会计部',
-                  key: '0-1-1-1',
-                  isLocked: false,
-                },
-              ],
-            },
-            {
-              title: '人力资源部',
-              key: '0-1-2',
-              isLocked: false,
-            },
-          ],
-        },
-      ],
+    setState({
+      loading: props.loading,
     })
-  }, [])
+  }, [props.loading, setState])
+
+  /**
+   * @Description 设置基础菜单树
+   * @Author bihongbin
+   * @Date 2020-10-20 11:35:31
+   */
+  useEffect(() => {
+    setState({
+      basicMenu: props.treeList,
+    })
+  }, [props.treeList, setState])
+
+  /**
+   * @Description 设置公司数据
+   * @Author bihongbin
+   * @Date 2020-10-20 11:35:45
+   */
+  useEffect(() => {
+    setState({
+      companyList: props.companyList,
+    })
+  }, [props.companyList, setState])
 
   return (
     <Modal
@@ -207,7 +155,7 @@ const PermissionsView = (props: PropType) => {
               </Descriptions.Item>
               <Descriptions.Item
                 label={
-                  <Tag className="tag-size-middle tag-finish">页面权限</Tag>
+                  <Tag className="tag-size-middle tag-finish">资源权限</Tag>
                 }
               >
                 <ul>

@@ -12,20 +12,11 @@ import React, {
 import { Row } from 'antd'
 import { CloseOutlined } from '@ant-design/icons'
 import { SxyButton } from '@/style/module/button'
-
-export interface TypeProps {
-  buttonClassName?: string // button的className
-  checkType?: 'checkbox' | 'radio' // 单选和多选
-  deleteOpen?: boolean // 是否打开删除功能
-  data?: DataList[] // 按钮组数据
-  onChange?: (data: DataList[]) => void
-}
-
-interface DataList {
-  name: string
-  value: string | number
-  selected?: boolean
-}
+import {
+  ButtonGroupTypeProps,
+  ButtonGroupListType,
+  ButtonGroupCallType,
+} from '@/components/ButtonGroup/interface'
 
 type ReducerType = (state: StateType, action: Action) => StateType
 
@@ -34,7 +25,11 @@ type Action = {
   payload: any
 }
 
-type StateType = typeof stateValue
+interface StateType {
+  type: ButtonGroupTypeProps['checkType']
+  deleteOpen: boolean
+  data: ButtonGroupTypeProps['data']
+}
 
 enum ActionType {
   SET_TYPE = '[SetType Action]',
@@ -42,13 +37,13 @@ enum ActionType {
   SET_DATA = '[SetData Action]',
 }
 
-const stateValue = {
-  type: 'checkbox' as TypeProps['checkType'], // 选择类型（单选和多选）
+const stateValue: StateType = {
+  type: 'checkbox', // 选择类型（单选和多选）
   deleteOpen: false, // 是否开启删除功能
-  data: [] as TypeProps['data'], // 按钮数据
+  data: [], // 按钮数据
 }
 
-const ButtonGroup = (props: TypeProps, ref: any) => {
+const ButtonGroup = (props: ButtonGroupTypeProps, ref: any) => {
   const [state, dispatch] = useReducer<ReducerType>((state, action) => {
     switch (action.type) {
       case ActionType.SET_TYPE: // 设置类型
@@ -69,17 +64,13 @@ const ButtonGroup = (props: TypeProps, ref: any) => {
     }
   }, stateValue)
 
-  const filterSelected = (data: DataList[]) => {
-    return data.filter((item) => item.selected)
-  }
-
   /**
    * @Description 设置按钮状态选中
    * @Author bihongbin
    * @Date 2020-08-04 11:29:36
    */
-  const handleSelected = (item: DataList, index: number) => {
-    let formatList = [] as DataList[]
+  const handleSelected = (item: ButtonGroupListType, index: number) => {
+    let formatList = [] as ButtonGroupListType[]
     // 当打开删除功能的时候，不能进行单选和多选
     if (props.deleteOpen) {
       return
@@ -105,7 +96,7 @@ const ButtonGroup = (props: TypeProps, ref: any) => {
       }
     }
     if (props.onChange) {
-      props.onChange(filterSelected(formatList))
+      props.onChange(formatList)
     }
     dispatch({
       type: ActionType.SET_DATA,
@@ -122,7 +113,7 @@ const ButtonGroup = (props: TypeProps, ref: any) => {
     if (state.data) {
       const d = state.data.filter((m, i) => index !== i)
       if (props.onChange) {
-        props.onChange(filterSelected(d))
+        props.onChange(d)
       }
       dispatch({
         type: ActionType.SET_DATA,
@@ -131,6 +122,11 @@ const ButtonGroup = (props: TypeProps, ref: any) => {
     }
   }
 
+  /**
+   * @Description 设置单选和多选
+   * @Author bihongbin
+   * @Date 2020-10-19 10:32:39
+   */
   useEffect(() => {
     if (props.checkType) {
       dispatch({
@@ -140,6 +136,11 @@ const ButtonGroup = (props: TypeProps, ref: any) => {
     }
   }, [props.checkType])
 
+  /**
+   * @Description 是否打开删除功能
+   * @Author bihongbin
+   * @Date 2020-10-19 10:32:50
+   */
   useEffect(() => {
     if (props.deleteOpen) {
       dispatch({
@@ -149,12 +150,19 @@ const ButtonGroup = (props: TypeProps, ref: any) => {
     }
   }, [props.deleteOpen])
 
+  /**
+   * @Description 设置按钮默认的selected
+   * @Author bihongbin
+   * @Date 2020-10-19 10:23:56
+   */
   useEffect(() => {
     if (props.data) {
-      const data = props.data.map((item) => ({
-        ...item,
-        selected: false,
-      }))
+      const data = props.data.map((item) => {
+        if (item.selected === undefined) {
+          item.selected = false
+        }
+        return item
+      })
       dispatch({
         type: ActionType.SET_DATA,
         payload: data,
@@ -167,33 +175,30 @@ const ButtonGroup = (props: TypeProps, ref: any) => {
    * @Author bihongbin
    * @Date 2020-08-04 11:51:33
    */
-  useImperativeHandle(ref, () => ({
+  useImperativeHandle<any, ButtonGroupCallType>(ref, () => ({
     // 当前选中的按钮
-    getButtonGroupSelected: () =>
-      state.data ? state.data.filter((item) => item.selected) : [],
+    getButtonGroupSelected: () => state.data.filter((item) => item.selected),
   }))
 
   return (
     <Row>
-      {state.data
-        ? state.data.map((item, index) => (
-            <span className={`position ${props.buttonClassName}`} key={index}>
-              <SxyButton
-                mode={item.selected ? 'primary' : 'dust'}
-                border={false}
-                onClick={() => handleSelected(item, index)}
-              >
-                {item.name}
-                {state.deleteOpen ? (
-                  <CloseOutlined
-                    onClick={() => handleDelete(index)}
-                    className="sxy-button-close"
-                  />
-                ) : null}
-              </SxyButton>
-            </span>
-          ))
-        : null}
+      {state.data.map((item, index) => (
+        <span className={`position ${props.buttonClassName}`} key={index}>
+          <SxyButton
+            mode={item.selected ? 'primary' : 'dust'}
+            border={false}
+            onClick={() => handleSelected(item, index)}
+          >
+            {item.name}
+            {state.deleteOpen ? (
+              <CloseOutlined
+                onClick={() => handleDelete(index)}
+                className="sxy-button-close"
+              />
+            ) : null}
+          </SxyButton>
+        </span>
+      ))}
     </Row>
   )
 }

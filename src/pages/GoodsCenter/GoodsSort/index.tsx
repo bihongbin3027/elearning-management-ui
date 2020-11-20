@@ -1,13 +1,18 @@
-import React, { useEffect, useRef, useReducer, useCallback } from 'react'
+import React, { useEffect, useRef, useCallback } from 'react'
 import { Space, Avatar, Button, Typography } from 'antd'
+import { ColumnType } from 'antd/es/table'
+import useSetState from '@/hooks/useSetState'
 import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
+  CardButtonType,
 } from '@/components/LayoutTableList'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import LayoutFormModal, {
   LayoutFormModalCallType,
+  LayoutFormPropTypes,
 } from '@/components/LayoutFormModal'
+import { GlobalConstant } from '@/config'
 import { handleRowDelete } from '@/utils'
 import { SxyIcon } from '@/style/module/icon'
 import { AnyObjectType } from '@/typings'
@@ -19,125 +24,43 @@ import {
 
 const { Text } = Typography
 
-type ReducerType = (state: StateType, action: Action) => StateType
-interface Action {
-  type: ActionType
-  payload: any
-}
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_SEARCH_FORM_LIST = '[SetSearchFormList Action]',
-  SET_COLUMNS = '[SetColumns Action]',
-  SET_CARD_HANDLE_BUTTON_LIST = '[SetCardHandleButtonList Action]',
-  SET_HANDLE_MODAL = '[SetHandleModal Action]',
-  SET_TRANSFER_MODAL = '[SetTransferModal Action]',
-}
-
-const stateValue = {
-  // 头部搜索数据
-  searchFormList: [] as FormListCallType[],
-  // 表格表头
-  tableColumns: [],
-  // 卡片操作按钮
-  cardHandleButtonList: [],
-  // 分类弹窗
-  handleModal: {
-    visible: false,
-    title: '新增商品信息',
-    disabled: false,
-    loading: false,
-    saveLoading: false,
-    submitApi: handleBasicQtyList,
-    formList: [] as FormListCallType[],
-  },
-  // 商品转移弹窗
-  transferModal: {
-    visible: false,
-    title: '商品转移',
-    width: 420,
-    submitApi: handleBasicQtyList,
-    formList: [] as FormListCallType[],
-  },
+interface StateType {
+  searchFormList: FormListCallType[]
+  tableColumns: ColumnType<AnyObjectType>[]
+  cardHandleButtonList: CardButtonType[]
+  handleModal: LayoutFormPropTypes
+  transferModal: LayoutFormPropTypes
 }
 
 const GoodsSort = () => {
+  const authBasic = GlobalConstant.buttonPermissions.basic // 基础权限
   const tableRef = useRef<LayoutTableCallType>()
   const layoutFormModalRef = useRef<LayoutFormModalCallType>()
   const transferModalRef = useRef<LayoutFormModalCallType>()
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_SEARCH_FORM_LIST: // 设置头部搜索表单数据
-        return {
-          ...state,
-          searchFormList: action.payload,
-        }
-      case ActionType.SET_COLUMNS: // 设置表格头
-        return {
-          ...state,
-          tableColumns: action.payload,
-        }
-      case ActionType.SET_CARD_HANDLE_BUTTON_LIST: // 设置卡片操作按钮
-        return {
-          ...state,
-          cardHandleButtonList: action.payload,
-        }
-      case ActionType.SET_HANDLE_MODAL: // 设置新增、编辑、查看弹窗数据
-        return {
-          ...state,
-          handleModal: {
-            ...state.handleModal,
-            ...action.payload,
-          },
-        }
-      case ActionType.SET_TRANSFER_MODAL: // 设置商品转移弹窗数据
-        return {
-          ...state,
-          transferModal: {
-            ...state.transferModal,
-            ...action.payload,
-          },
-        }
-    }
-  }, stateValue)
-
-  /**
-   * @Description 设置头部搜索表单数据
-   * @Author bihongbin
-   * @Date 2020-09-03 16:37:33
-   */
-  const handleSearchFormState = (data: StateType['searchFormList']) => {
-    dispatch({
-      type: ActionType.SET_SEARCH_FORM_LIST,
-      payload: data,
-    })
-  }
-
-  /**
-   * @Description 设置新增、编辑、查看弹窗数据
-   * @Author bihongbin
-   * @Date 2020-09-03 16:47:00
-   */
-  const handleModalState = (data: Partial<StateType['handleModal']>) => {
-    dispatch({
-      type: ActionType.SET_HANDLE_MODAL,
-      payload: data,
-    })
-  }
-
-  /**
-   * @Description 设置商品转移弹窗数据
-   * @Author bihongbin
-   * @Date 2020-09-03 17:34:25
-   */
-  const handleTransferModalState = (
-    data: Partial<StateType['transferModal']>,
-  ) => {
-    dispatch({
-      type: ActionType.SET_TRANSFER_MODAL,
-      payload: data,
-    })
-  }
+  const [state, setState] = useSetState<StateType>({
+    // 头部搜索数据
+    searchFormList: [],
+    // 表格表头
+    tableColumns: [],
+    // 卡片操作按钮
+    cardHandleButtonList: [],
+    // 分类弹窗
+    handleModal: {
+      visible: false,
+      title: '新增商品信息',
+      disable: false,
+      submitApi: handleBasicQtyList,
+      formList: [],
+    },
+    // 商品转移弹窗
+    transferModal: {
+      visible: false,
+      title: '商品转移',
+      width: 420,
+      submitApi: handleBasicQtyList,
+      formList: [],
+    },
+  })
 
   /**
    * @Description 查询
@@ -157,24 +80,23 @@ const GoodsSort = () => {
    */
   const getOpenModal = useCallback(
     (record: AnyObjectType, type: 'look' | 'edit') => {
-      // 查看
-      if (type === 'look') {
-        handleModalState({
-          visible: true,
-          title: '商品分类详情',
-          disabled: true,
-        })
-      }
-      // 编辑
-      if (type === 'edit') {
-        handleModalState({
-          visible: true,
-          title: '编辑商品分类',
-          disabled: false,
-        })
-      }
+      setState((prev) => {
+        // 查看
+        if (type === 'look') {
+          prev.handleModal.visible = true
+          prev.handleModal.title = '商品分类详情'
+          prev.handleModal.disable = true
+        }
+        // 编辑
+        if (type === 'edit') {
+          prev.handleModal.visible = true
+          prev.handleModal.title = '编辑商品分类'
+          prev.handleModal.disable = false
+        }
+        return prev
+      })
     },
-    [],
+    [setState],
   )
 
   /**
@@ -183,29 +105,31 @@ const GoodsSort = () => {
    * @Date 2020-09-03 16:37:01
    */
   useEffect(() => {
-    handleSearchFormState([
-      {
-        componentName: 'Select',
-        name: 'a',
-        placeholder: '请选择店铺商品分类',
-        selectData: [
-          {
-            label: '分类一',
-            value: '1',
-          },
-          {
-            label: '分类二',
-            value: '2',
-          },
-        ],
-      },
-      {
-        componentName: 'Input',
-        name: 'b',
-        placeholder: '请输入商品ID/名称/关键词搜索商品',
-      },
-    ])
-  }, [])
+    setState({
+      searchFormList: [
+        {
+          componentName: 'Select',
+          name: 'a',
+          placeholder: '请选择店铺商品分类',
+          selectData: [
+            {
+              label: '分类一',
+              value: '1',
+            },
+            {
+              label: '分类二',
+              value: '2',
+            },
+          ],
+        },
+        {
+          componentName: 'Input',
+          name: 'b',
+          placeholder: '请输入商品ID/名称/关键词搜索商品',
+        },
+      ],
+    })
+  }, [setState])
 
   /**
    * @Description 设置卡片操作按钮数据
@@ -213,23 +137,24 @@ const GoodsSort = () => {
    * @Date 2020-09-03 16:40:59
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_CARD_HANDLE_BUTTON_LIST,
-      payload: [
+    setState({
+      cardHandleButtonList: [
         {
           name: '添加新分类',
+          authCode: authBasic.ADD,
           icon: 'card_add.png',
           clickConfirm: () => {
-            handleModalState({
-              visible: true,
-              title: '新增商品分类',
-              disabled: false,
+            setState((prev) => {
+              prev.handleModal.visible = true
+              prev.handleModal.id = ''
+              prev.handleModal.title = '新增商品分类'
+              return prev
             })
           },
         },
       ],
     })
-  }, [])
+  }, [authBasic.ADD, setState])
 
   /**
    * @Description 设置表格头
@@ -237,9 +162,8 @@ const GoodsSort = () => {
    * @Date 2020-09-03 16:44:31
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_COLUMNS,
-      payload: [
+    setState({
+      tableColumns: [
         {
           title: '分类层级',
           dataIndex: 'qtyCname',
@@ -270,16 +194,19 @@ const GoodsSort = () => {
           fixed: 'right',
           width: 135,
           render: (value: number, record: any) => {
-            const operatingData = []
+            const operatingData: TableOperateButtonType[] = []
             // 编辑
             operatingData.push({
               name: '编辑',
-              onClick: () => getOpenModal(record, 'edit'),
+              authCode: authBasic.EDIT,
               svg: 'table_edit.png',
+              onClick: () => getOpenModal(record, 'edit'),
             })
             // 删除
             operatingData.push({
               name: '删除',
+              authCode: authBasic.DELETE,
+              svg: 'table_delete.png',
               onClick: () => {
                 if (tableRef.current) {
                   handleRowDelete(
@@ -289,27 +216,30 @@ const GoodsSort = () => {
                   )
                 }
               },
-              svg: 'table_delete.png',
             })
             // 更多
             operatingData.push({
               name: '更多',
-              type: 'more',
+              authCode: authBasic.MORE,
               svg: 'table_more.png',
               moreList: [
                 {
                   name: '转移商品',
                   onClick: () => {
-                    handleTransferModalState({ visible: true })
+                    setState((prev) => {
+                      prev.transferModal.visible = true
+                      return prev
+                    })
                   },
                 },
                 {
                   name: '添加子类',
                   onClick: () => {
-                    handleModalState({
-                      visible: true,
-                      title: '添加商品子类',
-                      disabled: false,
+                    setState((prev) => {
+                      prev.handleModal.visible = true
+                      prev.handleModal.title = '添加商品子类'
+                      prev.handleModal.disable = false
+                      return prev
                     })
                   },
                 },
@@ -320,7 +250,7 @@ const GoodsSort = () => {
         },
       ],
     })
-  }, [getOpenModal])
+  }, [authBasic.DELETE, authBasic.EDIT, authBasic.MORE, getOpenModal, setState])
 
   /**
    * @Description 设置新增编辑弹窗默认表单字段
@@ -328,21 +258,21 @@ const GoodsSort = () => {
    * @Date 2020-09-03 17:14:23
    */
   useEffect(() => {
-    handleModalState({
-      formList: [
+    setState((prev) => {
+      prev.handleModal.formList = [
         {
           componentName: 'Input',
           name: 'a',
           label: '分类排序',
           placeholder: '请输入分类排序',
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
         },
         {
           componentName: 'Select',
           name: 'b',
           label: '上级分类',
           placeholder: '请选择上级分类',
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
         },
         {
           componentName: 'Input',
@@ -350,14 +280,14 @@ const GoodsSort = () => {
           label: '分类名称',
           placeholder: '请输入分类名称',
           rules: [{ required: true, message: '请输入分类名称' }],
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
         },
         {
           componentName: 'Input',
           name: 'd',
           label: '关键词',
           placeholder: '请输入关键词',
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
         },
         {
           componentName: 'HideInput',
@@ -374,7 +304,7 @@ const GoodsSort = () => {
                       size={100}
                       alt="分类图标"
                     />
-                    {!state.handleModal.disabled && (
+                    {!state.handleModal.disable && (
                       <Button type="primary">上传</Button>
                     )}
                   </Space>
@@ -390,7 +320,7 @@ const GoodsSort = () => {
           colProps: {
             span: 24,
           },
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
         },
         {
           componentName: 'Radio',
@@ -407,7 +337,7 @@ const GoodsSort = () => {
             },
           ],
           rules: [{ required: true, message: '请选择是否关联平台分类' }],
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
           colProps: {
             span: 24,
           },
@@ -432,7 +362,7 @@ const GoodsSort = () => {
             },
           ],
           rules: [{ required: true, message: '请选择是否店铺首页推荐' }],
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
           colProps: {
             span: 24,
           },
@@ -452,11 +382,12 @@ const GoodsSort = () => {
             span: 24,
           },
           rules: [{ max: 300, message: '最多可以输入300个字' }],
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
         },
-      ],
+      ]
+      return prev
     })
-  }, [state.handleModal.disabled])
+  }, [setState, state.handleModal.disable])
 
   /**
    * @Description 设置商品转移弹窗表单数据
@@ -464,14 +395,14 @@ const GoodsSort = () => {
    * @Date 2020-09-03 17:37:02
    */
   useEffect(() => {
-    handleTransferModalState({
-      formList: [
+    setState((prev) => {
+      prev.transferModal.formList = [
         {
           componentName: 'Select',
           name: 'd',
           label: '转移的分类',
           placeholder: '请选择转移的分类',
-          disabled: state.handleModal.disabled,
+          disabled: state.handleModal.disable,
           selectData: [],
           rules: [{ required: true, message: '请选择转移的分类' }],
           colProps: {
@@ -483,9 +414,10 @@ const GoodsSort = () => {
             </Text>
           ),
         },
-      ],
+      ]
+      return prev
     })
-  }, [state.handleModal.disabled])
+  }, [setState, state.handleModal.disable])
 
   /**
    * @Description 初始化
@@ -534,7 +466,12 @@ const GoodsSort = () => {
       />
       <LayoutFormModal
         ref={layoutFormModalRef}
-        onCancel={() => handleModalState({ visible: false })}
+        onCancel={() => {
+          setState((prev) => {
+            prev.handleModal.visible = false
+            return prev
+          })
+        }}
         formConfig={{
           initialValues: {
             f: '0',
@@ -545,7 +482,12 @@ const GoodsSort = () => {
       />
       <LayoutFormModal
         ref={transferModalRef}
-        onCancel={() => handleTransferModalState({ visible: false })}
+        onCancel={() => {
+          setState((prev) => {
+            prev.transferModal.visible = false
+            return prev
+          })
+        }}
         {...state.transferModal}
       />
     </>

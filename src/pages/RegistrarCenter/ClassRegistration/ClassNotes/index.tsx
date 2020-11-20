@@ -5,7 +5,7 @@ import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
 } from '@/components/LayoutTableList'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import { SxyButton } from '@/style/module/button'
 import { handleRowDelete } from '@/utils'
 import { AnyObjectType } from '@/typings'
@@ -279,10 +279,11 @@ const ClassNotes = () => {
         width: 130,
         fixed: 'right',
         render: (value: number, record: any) => {
-          const operatingData = []
+          const operatingData: TableOperateButtonType[] = []
           // 编辑
           operatingData.push({
             name: '编辑',
+            type: 'edit',
             onClick: () => {
               // handleModalState({
               //   visible: true,
@@ -296,6 +297,7 @@ const ClassNotes = () => {
           // 删除
           operatingData.push({
             name: '删除',
+            type: 'delete',
             onClick: () => {
               if (mainListTableRef.current) {
                 handleRowDelete(

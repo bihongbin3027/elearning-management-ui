@@ -1,7 +1,7 @@
-import React, { useReducer } from 'react'
+import React, { useReducer, useRef } from 'react'
 import { Modal, Spin, Row, Col, Button, Space } from 'antd'
+import GenerateTable, { TableCallType } from '@/components/GenerateTable'
 import { SxyBadge } from '@/style/module/badge'
-import { SxyTable } from '@/style/module/table'
 
 interface PropType {
   visible: boolean
@@ -24,13 +24,29 @@ type StateType = typeof stateValue
 
 enum ActionType {
   SET_LOADING = '[SetLoading Action]',
+  SET_HANDLE_MODAL = '[SetHandleModal Action]',
 }
 
 const stateValue = {
   loading: false, // 弹窗全局显示loading
+  handleModal: {
+    shopTableColumns: [
+      { title: '子单号', dataIndex: 'qtyEname' },
+      { title: '商品名称', dataIndex: 'qtyEname' },
+      { title: '商品编号', dataIndex: 'qtyEname' },
+      { title: '规格', dataIndex: 'qtyEname' },
+      { title: '价格', dataIndex: 'qtyEname' },
+      { title: '数量', dataIndex: 'qtyEname' },
+      { title: '商品金额', dataIndex: 'qtyEname' },
+      { title: '优惠金额', dataIndex: 'qtyEname' },
+      { title: '需付金额', dataIndex: 'qtyEname' },
+    ],
+    shopTableData: [],
+  },
 }
 
 const GoodsDetailsView = (props: PropType) => {
+  const shopModalRef = useRef<TableCallType>(null)
   const [state] = useReducer<(state: StateType, action: Action) => StateType>(
     (state, action) => {
       switch (action.type) {
@@ -38,6 +54,14 @@ const GoodsDetailsView = (props: PropType) => {
           return {
             ...state,
             loading: action.payload,
+          }
+        case ActionType.SET_HANDLE_MODAL: // 设置新增编辑弹窗
+          return {
+            ...state,
+            handleModal: {
+              ...state.handleModal,
+              ...action.payload,
+            },
           }
         default:
           return state
@@ -48,7 +72,7 @@ const GoodsDetailsView = (props: PropType) => {
 
   return (
     <Modal
-      width={800}
+      width={700}
       visible={props.visible}
       title="商品订单详情"
       onCancel={props.onCancel}
@@ -63,45 +87,20 @@ const GoodsDetailsView = (props: PropType) => {
               <SxyBadge bg="#5860F8" />
               <span className="font-16">商品信息</span>
             </Space>
-            <SxyTable className="mt-4">
-              <thead>
-                <tr>
-                  <th>子单号</th>
-                  <th>商品名称</th>
-                  <th>商品编号</th>
-                  <th>规格</th>
-                  <th>价格</th>
-                  <th>数量</th>
-                  <th>商品金额</th>
-                  <th>优惠金额</th>
-                  <th>需付金额</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>G20191225171876429</td>
-                  <td>XXXX</td>
-                  <td>12251718</td>
-                  <td>XXX</td>
-                  <td>￥39.00</td>
-                  <td>2</td>
-                  <td>￥58.00</td>
-                  <td>￥0.00</td>
-                  <td>￥0.00</td>
-                </tr>
-                <tr>
-                  <td>G20191225171876429</td>
-                  <td>XXXX</td>
-                  <td>12251718</td>
-                  <td>XXX</td>
-                  <td>￥39.00</td>
-                  <td>2</td>
-                  <td>￥58.00</td>
-                  <td>￥0.00</td>
-                  <td>￥0.00</td>
-                </tr>
-              </tbody>
-            </SxyTable>
+            <div className="mt-3">
+              <GenerateTable
+                ref={shopModalRef}
+                data={state.handleModal.shopTableData}
+                columns={state.handleModal.shopTableColumns}
+                tableConfig={{
+                  className: 'table-header-grey',
+                  scroll: {
+                    x: 800,
+                    y: 300,
+                  },
+                }}
+              />
+            </div>
             <Row className="mt-3" justify="end">
               <Col span={7}>
                 <Row>

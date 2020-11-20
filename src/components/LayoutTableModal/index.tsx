@@ -3,31 +3,41 @@
  * @Author bihongbin
  * @Date 2020-08-07 11:55:09
  * @LastEditors bihongbin
- * @LastEditTime 2020-09-23 10:35:55
+ * @LastEditTime 2020-10-29 17:22:49
  */
 
-import React, { useRef, useReducer } from 'react'
+import React, {
+  useRef,
+  useEffect,
+  useReducer,
+  useImperativeHandle,
+  forwardRef,
+} from 'react'
 import { Modal, Row, Col, Button, message } from 'antd'
-import { TableProps } from 'antd/es/table'
-import { AnyObjectType, AjaxResultType } from '@/typings'
+import { TableProps, ColumnType } from 'antd/es/table'
+import { AnyObjectType, PromiseAxiosResultType } from '@/typings'
 import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
 } from '@/components/LayoutTableList'
 
-export interface PropTypes {
+export interface LayoutTableModalCallType {
+  LayoutTableListRef: () => LayoutTableCallType | undefined
+}
+
+export interface LayoutTableModalPropType {
   visible: boolean // 打开或关闭
-  title: string | null | undefined // 弹窗标题
+  title: React.ReactNode // 弹窗标题
   width?: number // 弹窗宽度
   searchFormList?: FormListCallType[] // 搜索表单数据
   tableColumnsList: {
     rowType?: 'checkbox' | 'radio' | undefined // 是否开启表格行选中 checkbox多选 radio单选
-    list: AnyObjectType[] // 表格头数据
+    list: ColumnType<AnyObjectType>[] // 表格头数据
     tableConfig?: TableProps<any> // 自定义配置，支持antd官方表格所有参数
   }
-  apiMethod: (data: any) => Promise<AjaxResultType> // 列表请求函数
-  onCancel: () => void // 取消或关闭弹窗
-  onConfirm?: (data?: AnyObjectType[]) => Promise<boolean> // 确定弹窗操作
+  apiMethod: (data: any) => PromiseAxiosResultType // 列表请求函数
+  onCancel?: () => void // 取消或关闭弹窗
+  onConfirm?: (data: AnyObjectType[]) => Promise<boolean> // 确定弹窗操作
 }
 
 type ReducerType = (state: StateType, action: Action) => StateType
@@ -49,7 +59,7 @@ const stateValue = {
   saveLoading: false, // 保存按钮loading
 }
 
-const LayoutTableModal = (props: PropTypes) => {
+const LayoutTableModal = (props: LayoutTableModalPropType, ref: any) => {
   const layoutTableRef = useRef<LayoutTableCallType>()
   const [state, dispatch] = useReducer<ReducerType>((state, action) => {
     switch (action.type) {
@@ -74,7 +84,7 @@ const LayoutTableModal = (props: PropTypes) => {
    * @Date 2020-08-07 13:48:41
    */
   const handleConfirm = () => {
-    let data = undefined
+    let data: AnyObjectType[] = []
     if (props.onConfirm) {
       if (layoutTableRef.current) {
         data = layoutTableRef.current.getSelectRowsArray()
@@ -91,7 +101,7 @@ const LayoutTableModal = (props: PropTypes) => {
             payload: false,
           })
           if (res) {
-            props.onCancel()
+            props.onCancel && props.onCancel()
           }
         })
         .catch((err) => {
@@ -100,13 +110,31 @@ const LayoutTableModal = (props: PropTypes) => {
     }
   }
 
+  /**
+   * @Description 初始化
+   * @Author bihongbin
+   * @Date 2020-10-29 17:17:51
+   */
+  useEffect(() => {
+    if (props.visible && layoutTableRef.current) {
+      layoutTableRef.current.getTableList({
+        updateSelected: false,
+      })
+    }
+  }, [props.visible])
+
+  // 暴漏给父组件调用
+  useImperativeHandle<any, LayoutTableModalCallType>(ref, () => ({
+    LayoutTableListRef: () => layoutTableRef.current,
+  }))
+
   return (
     <Modal
       width={props.width}
       visible={props.visible}
       title={props.title}
       onCancel={props.onCancel}
-      destroyOnClose
+      forceRender
       maskClosable={false}
       footer={null}
     >
@@ -125,7 +153,7 @@ const LayoutTableModal = (props: PropTypes) => {
           <Button
             className="font-14"
             size="large"
-            onClick={() => props.onCancel()}
+            onClick={() => props.onCancel && props.onCancel()}
           >
             取消
           </Button>
@@ -144,4 +172,4 @@ const LayoutTableModal = (props: PropTypes) => {
   )
 }
 
-export default LayoutTableModal
+export default forwardRef(LayoutTableModal)

@@ -1,4 +1,5 @@
-import React, { useReducer } from 'react'
+import React from 'react'
+import useSetState from '@/hooks/useSetState'
 import { Avatar, Modal, Row, Col, Button, message } from 'antd'
 
 interface PropType {
@@ -13,66 +14,32 @@ interface IconType {
   src: string
 }
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_ICON = '[SetIcon Action]',
+interface StateType {
+  iconModal: {
+    selected: number
+    list: IconType[]
+  }
 }
 
 const userImg = require('@/assets/images/default.jpg')
 
-const stateValue = {
-  // 图标
-  iconModal: {
-    selected: -1,
-    list: [
-      { src: userImg },
-      { src: userImg },
-      { src: userImg },
-      { src: userImg },
-      { src: userImg },
-      { src: userImg },
-      { src: userImg },
-      { src: userImg },
-      { src: userImg },
-    ] as IconType[],
-  },
-}
-
 const IconSelectionView = (props: PropType) => {
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_ICON: // 设置图标
-        return {
-          ...state,
-          iconModal: {
-            ...state.iconModal,
-            ...action.payload,
-          },
-        }
-    }
-  }, stateValue)
-
-  /**
-   * @Description 点击图标
-   * @Author bihongbin
-   * @Date 2020-08-18 17:36:40
-   */
-  const handleIconState = (index: number) => {
-    dispatch({
-      type: ActionType.SET_ICON,
-      payload: {
-        selected: index,
-      },
-    })
-  }
+  const [state, setState] = useSetState<StateType>({
+    iconModal: {
+      selected: -1,
+      list: [
+        { src: userImg },
+        { src: userImg },
+        { src: userImg },
+        { src: userImg },
+        { src: userImg },
+        { src: userImg },
+        { src: userImg },
+        { src: userImg },
+        { src: userImg },
+      ],
+    },
+  })
 
   /**
    * @Description 确定
@@ -107,7 +74,12 @@ const IconSelectionView = (props: PropType) => {
               className={`avatar-selected ${
                 index === state.iconModal.selected ? 'avatar-selected-bg' : null
               }`}
-              onClick={() => handleIconState(index)}
+              onClick={() => {
+                setState((prev) => {
+                  prev.iconModal.selected = index
+                  return prev
+                })
+              }}
             >
               <Avatar
                 className="pointer"

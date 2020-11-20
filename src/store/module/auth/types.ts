@@ -1,109 +1,110 @@
 // 设置登录页面loading
 export const SET_LOGIN_LOADING = '[SetLoginLoading] Action'
 
-// 设置验证码
-export const SET_VERIFICATION_CODE = '[SetVerificationCode Action]'
+// 设置token
+export const SET_AUTH_TOKEN = '[SetAuthToken] Action'
 
-// 设置用户数据
+// 设置用户
 export const SET_USER = '[SetUser] Action'
 
-// 设置菜单数据
+// 获取菜单
+export const GET_USER_MENU = '[GetUserMenu] Action'
+
+// 设置菜单
 export const SET_USER_MENU = '[SetUserMenu] Action'
 
 // 设置菜单tab
 export const SET_TOP_TAB = '[SetTopTable] Action'
 
+// 获取系统信息
+export const GET_SYSTEM_INFO = '[GetSystemInfo] Action'
+
+// 设置系统信息
+export const SET_SYSTEM_INFO = '[SetSystemInfo] Action'
+
 // 登录
 export const LOGIN = '[Login] Action'
+
 // 退出
 export const LOGOUT = '[Logout] Action'
 
 // 默认数据类型
 export interface InitAuthStateType {
-  loginLoading: SetLoginLoadingPayloadType
-  verificationCode: {
-    uuid: string
-    img: string
-  }
-  user:
-    | {
-        userId: string
-        fullname: string
-      }
-    | undefined
+  loginLoading: boolean
+  user: SetUserPayloadType | undefined
   rootMenuList: SetUserMenuPayloadType[]
-  authToken: undefined | string
-  tokenType: undefined | string
+  authToken: string | undefined
+  systemInfo: {
+    sysName: string
+    sysCode: string
+    companyId: string
+    companyName: string
+    logoImageUrl: string
+  }
   tabLayout: LayoutTabType
 }
 
-type PermissionsType = {
-  actionCode: string
-  havePermission: boolean
-  param:
-    | {
-        [key: string]: any
-      }
-    | string
+export interface PermissionButtonCode {
+  id: string
+  pid: string
+  name: string
+  category: string
+  permissionCode: string
 }
 
 export interface SetUserMenuPayloadType {
+  parentIds: string
+  pid: string
+  id: string
   name: string
-  path: string
-  component: string
-  menuParam: {
-    sourceType?: string
-    businessObj?: string
-    detCode?: string
-    loadType?: string
-    dataFlag?: string
-    reportCode?: string
-  }
+  code: string
+  category: string
+  navigateUrl: string
+  interfaceRef: string
+  urlFlag: 0 | 1
+  visibleFlag: 0 | 1
+  permissionList?: PermissionButtonCode[]
+  permissionCodeList: string[]
   children: SetUserMenuPayloadType[]
-  permissions: PermissionsType[]
-  permissionsActionCode: string[]
-  active: boolean
-  homePage: boolean
-  href: string
-  icon: string
-  parentPath: string
-  selected: boolean
-  seqSort: number
-  resourceId: number
 }
 
-export type SetLoginLoadingPayloadType = boolean
 export interface SetUserPayloadType {
-  access_token: string
-  token_type: string
-  xing: string
+  id: string
+  cid: string
+  cname: string
+  userName: string
+  gender: number
+  mobilePhone: string
+  orgName: string
+  workNumber: string
+  email: string
+  workDuty: string
+  roleNames: string[]
+  permissionGrade: string
 }
 
 export interface LayoutTabType {
-  current: number
   tabList: SetUserMenuPayloadType[]
-}
-
-export interface LoginParamsType {
-  grant_type: string
-  uuid: string
-  username: string
-  password: string
-  imgCode: string
 }
 
 export interface SetLoginLoadingAction {
   type: typeof SET_LOGIN_LOADING
-  payload: SetLoginLoadingPayloadType
+  payload: InitAuthStateType['loginLoading']
 }
 
-export interface SetVerificationCodeAction {
-  type: typeof SET_VERIFICATION_CODE
+export interface SetAuthTokenAction {
+  type: typeof SET_AUTH_TOKEN
+  payload: string
 }
 
 export interface SetUserAction {
   type: typeof SET_USER
   payload: SetUserPayloadType
+}
+
+export interface GetUserMenuAction {
+  type: typeof GET_USER_MENU
+  payload: (() => void) | undefined
 }
 
 export interface SetUserMenuAction {
@@ -116,22 +117,32 @@ export interface SetTopTabAction {
   payload: LayoutTabType
 }
 
+export interface GetSystemInfoAction {
+  type: typeof GET_SYSTEM_INFO
+}
+
+export interface SetSystemInfoAction {
+  type: typeof SET_SYSTEM_INFO
+  payload: InitAuthStateType['systemInfo']
+}
+
 export interface LoginAction {
   type: typeof LOGIN
-  payload: LoginParamsType
+  payload: string
 }
 
 export interface LogoutAction {
   type: typeof LOGOUT
-  payload: any
 }
 
 // 导出action类型
 export type AuthActionType =
   | SetLoginLoadingAction
-  | SetVerificationCodeAction
+  | SetAuthTokenAction
   | SetUserAction
+  | GetUserMenuAction
   | SetUserMenuAction
   | SetTopTabAction
+  | SetSystemInfoAction
   | LoginAction
   | LogoutAction

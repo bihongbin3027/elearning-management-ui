@@ -1,14 +1,18 @@
-import React, { useCallback } from 'react'
+import React, { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { Menu, Button } from 'antd'
+import _ from 'lodash'
+import { Menu, Button, Avatar, message } from 'antd'
 import { HomeOutlined, AppstoreOutlined } from '@ant-design/icons'
 import layoutStore from '@/store/module/layout'
+import authStore from '@/store/module/auth'
 import { RootStateType } from '@/store/rootReducer'
 import { AnyObjectType } from '@/typings'
 import { SetUserMenuPayloadType } from '@/store/module/auth/types'
 import { SxyIcon } from '@/style/module/icon'
 import { GlobalConstant } from '@/config'
+import useMenuParams from '@/hooks/useMenuParams'
+import { queryCodeMenuObject } from '@/utils'
 import { SiderStyle } from '@/pages/Layout/Sider/style'
 
 const { SubMenu } = Menu
@@ -16,35 +20,46 @@ const { SubMenu } = Menu
 const SiderBox = () => {
   const history = useHistory()
   const dispatchRedux = useDispatch()
-  const { rootMenuList, openSider } = useSelector((state: RootStateType) => ({
-    ...state.auth,
-    ...state.layout,
-  }))
+  const currentMenuObj = useMenuParams()
+  const { rootMenuList, tabLayout, systemInfo, openSider } = useSelector(
+    (state: RootStateType) => ({
+      ...state.auth,
+      ...state.layout,
+    }),
+  )
+
+  /**
+   * @Description 当前页面权限菜单
+   * @Author bihongbin
+   * @Date 2020-11-09 09:28:49
+   */
+  const currentPageAuth = useMemo(
+    () => currentMenuObj.currentMenu && currentMenuObj.currentMenu,
+    [currentMenuObj.currentMenu],
+  )
 
   /**
    * @Description 递归渲染菜单
    * @Author bihongbin
    * @Date 2020-08-17 10:13:20
    */
-  const transformMenuList = useCallback((list: SetUserMenuPayloadType[]) => {
-    // 菜单排序
-    const menuList = Array.from(list).sort((a, b) => a.seqSort - b.seqSort)
+  const transformMenuList = (list: SetUserMenuPayloadType[]) => {
+    const menuList = [...list]
     return menuList.map((item) => {
-      if (item.children) {
+      // visibleFlag = 1 是可见菜单
+      if (item.children && item.children.some((c) => c.visibleFlag === 1)) {
         return (
-          <SubMenu
-            key={item.path}
-            title={item.name}
-            icon={<AppstoreOutlined />}
-          >
+          <SubMenu key={item.id} title={item.name} icon={<AppstoreOutlined />}>
             {transformMenuList(item.children)}
           </SubMenu>
         )
       } else {
-        return <Menu.Item key={item.path}>{item.name}</Menu.Item>
+        return item.visibleFlag === 1 ? (
+          <Menu.Item key={item.code}>{item.name}</Menu.Item>
+        ) : null
       }
     })
-  }, [])
+  }
 
   /**
    * @Description 侧边栏菜单被选中时调用
@@ -52,8 +67,52 @@ const SiderBox = () => {
    * @Date 2020-08-18 09:42:32
    */
   const handleSiderMenuSelect = (menu: AnyObjectType) => {
-    history.push(menu.key)
+    let tabData = tabLayout.tabList
+    if (menu.key === 'INDEX') {
+      history.push('/index')
+    } else {
+      const item = queryCodeMenuObject(menu.key)
+      if (item) {
+        if (item.navigateUrl && item.interfaceRef) {
+          tabData = _.unionBy(_.concat(tabData, item), (e) => e.navigateUrl) // 合并去重
+          dispatchRedux(
+            authStore.actions.setTopTab({
+              tabList: tabData,
+            }),
+          )
+          // 外部链接
+          if (item.urlFlag === 1) {
+            window.open(item.navigateUrl)
+            return
+          } else {
+            history.push(item.navigateUrl)
+          }
+        } else {
+          message.warn('无效菜单', 1.5)
+        }
+      }
+    }
   }
+
+  /**
+   * @Description 菜单选中
+   * @Author bihongbin
+   * @Date 2020-11-05 17:23:37
+   */
+  const menuState = useMemo(() => {
+    let arrKeys: {
+      openKeys: string[]
+      selectedKeys: string[]
+    } = {
+      openKeys: [],
+      selectedKeys: [],
+    }
+    if (currentPageAuth) {
+      arrKeys.openKeys = currentPageAuth.parentIds.split('_') || [] // 菜单展开的key
+      arrKeys.selectedKeys = [currentPageAuth.code] || ['INDEX'] // 菜单选中的key
+    }
+    return arrKeys
+  }, [currentPageAuth])
 
   return (
     <SiderStyle
@@ -66,14 +125,17 @@ const SiderBox = () => {
     >
       <div className="logo-wrap">
         <div className="logo-box">
-          <SxyIcon
-            className="logo-icon"
-            width={50}
-            height={50}
-            name="logo.png"
-            onClick={() => history.push('/index')}
-          />
-          <h1>华旅云创教育</h1>
+          {systemInfo.logoImageUrl ? (
+            <Avatar shape="square" size={40} src={systemInfo.logoImageUrl} />
+          ) : (
+            <SxyIcon
+              className="logo-icon"
+              width={50}
+              height={50}
+              name="logo.png"
+            />
+          )}
+          <h1>{systemInfo.companyName}</h1>
         </div>
         <Button
           type="text"
@@ -101,66 +163,15 @@ const SiderBox = () => {
       </div>
       <Menu
         className="slider-menu-scroll"
-        defaultSelectedKeys={['/index']}
+        defaultOpenKeys={menuState.openKeys}
+        selectedKeys={menuState.selectedKeys}
         mode="inline"
         theme="dark"
-        onSelect={handleSiderMenuSelect}
+        onClick={handleSiderMenuSelect}
       >
-        <Menu.Item key="/index" icon={<HomeOutlined />}>
-          工作台
+        <Menu.Item key="INDEX" icon={<HomeOutlined />}>
+          首页
         </Menu.Item>
-        <Menu.Item key="/file-center" icon={<AppstoreOutlined />}>
-          文件中心
-        </Menu.Item>
-        <SubMenu
-          key="/order-manage"
-          title="订单中心"
-          icon={<AppstoreOutlined />}
-        >
-          <Menu.Item key="/goods-manage">商品订单</Menu.Item>
-          <Menu.Item key="/service-manage">服务订单</Menu.Item>
-        </SubMenu>
-        <SubMenu
-          key="/course-center"
-          title="课程中心"
-          icon={<AppstoreOutlined />}
-        >
-          <Menu.Item key="/course-center">课程管理</Menu.Item>
-          <Menu.Item key="/subject-manage">科目管理</Menu.Item>
-        </SubMenu>
-        <SubMenu key="/clue" title="招生中心" icon={<AppstoreOutlined />}>
-          <Menu.Item key="/clue/my">我的线索</Menu.Item>
-          <Menu.Item key="/public-clue/pc">公共线索</Menu.Item>
-          <Menu.Item key="/admissions/manage">招生管理</Menu.Item>
-          <Menu.Item key="/group-newspaper/main-list">企业团报</Menu.Item>
-        </SubMenu>
-        <SubMenu key="/goods-list" title="商品中心" icon={<AppstoreOutlined />}>
-          <Menu.Item key="/goods-list">商品管理</Menu.Item>
-          <Menu.Item key="/goods-sort">商品分类</Menu.Item>
-          <Menu.Item key="/goods-group">商品组管理</Menu.Item>
-          <Menu.Item key="/goods-label">标签组管理</Menu.Item>
-        </SubMenu>
-        <SubMenu
-          key="/classes-manage"
-          title="教务中心"
-          icon={<AppstoreOutlined />}
-        >
-          <Menu.Item key="/classes-manage">班级管理</Menu.Item>
-          <Menu.Item key="/question-bank-manage">试卷管理</Menu.Item>
-          <Menu.Item key="/intelligent-course">智能排课</Menu.Item>
-          <Menu.Item key="/class-registration">上课登记</Menu.Item>
-          <Menu.Item key="/registrar-setting">教务设置</Menu.Item>
-        </SubMenu>
-        <SubMenu
-          key="/student-center"
-          title="学员中心"
-          icon={<AppstoreOutlined />}
-        >
-          <Menu.Item key="/student-center/class-roster">班级花名册</Menu.Item>
-          <Menu.Item key="/student-center/enrolled-students">
-            在读学生
-          </Menu.Item>
-        </SubMenu>
         {transformMenuList(rootMenuList)}
       </Menu>
     </SiderStyle>

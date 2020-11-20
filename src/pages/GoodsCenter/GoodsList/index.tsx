@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useReducer, useCallback } from 'react'
+import React, { useEffect, useRef, useCallback } from 'react'
 import {
   Space,
   Button,
@@ -10,13 +10,17 @@ import {
   Typography,
   Avatar,
 } from 'antd'
+import { ColumnType } from 'antd/es/table'
+import useSetState from '@/hooks/useSetState'
 import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
+  CardButtonType,
 } from '@/components/LayoutTableList'
 import TableOperate from '@/components/TableOperate'
 import GenerateForm, { FormCallType } from '@/components/GenerateForm'
 import Editor from '@/components/Editor'
+import { GlobalConstant } from '@/config'
 import { handleRowDelete } from '@/utils'
 import { AnyObjectType } from '@/typings'
 import {
@@ -27,97 +31,48 @@ import {
 const { TabPane } = Tabs
 const { Text } = Typography
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_SEARCH_FORM_LIST = '[SetSearchFormList Action]',
-  SET_COLUMNS = '[SetColumns Action]',
-  SET_CARD_HANDLE_BUTTON_LIST = '[SetCardHandleButtonList Action]',
-  SET_HANDLE_MODAL = '[SetHandleModal Action]',
-}
-
-const stateValue = {
-  // 头部搜索数据
-  searchFormList: [] as FormListCallType[],
-  // 表格表头
-  tableColumns: [],
-  // 卡片操作按钮
-  cardHandleButtonList: [],
-  // 详情弹窗
+interface StateType {
+  searchFormList: FormListCallType[]
+  tableColumns: ColumnType<AnyObjectType>[]
+  cardHandleButtonList: CardButtonType[]
   handleModal: {
-    visible: false,
-    title: '新增商品信息',
-    disabled: false,
-    loading: false,
-    saveLoading: false,
-    basicFormList: [] as FormListCallType[], // 基本信息
-    stockFormList: [] as FormListCallType[], // 商品库存
-    inventoryReduction: '1', // 库存减法
-  },
+    visible: boolean
+    id: string
+    title: string
+    disabled: boolean
+    loading: boolean
+    saveLoading: boolean
+    basicFormList: FormListCallType[]
+    stockFormList: FormListCallType[]
+    inventoryReduction: string
+  }
 }
 
 const GoodsMainList = () => {
+  const authBasic = GlobalConstant.buttonPermissions.basic // 基础权限
   const tableRef = useRef<LayoutTableCallType>()
   const basicFormRef = useRef<FormCallType>()
   const stockFormRef = useRef<FormCallType>()
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_SEARCH_FORM_LIST: // 设置头部搜索表单数据
-        return {
-          ...state,
-          searchFormList: action.payload,
-        }
-      case ActionType.SET_COLUMNS: // 设置表格头
-        return {
-          ...state,
-          tableColumns: action.payload,
-        }
-      case ActionType.SET_CARD_HANDLE_BUTTON_LIST: // 设置卡片操作按钮
-        return {
-          ...state,
-          cardHandleButtonList: action.payload,
-        }
-      case ActionType.SET_HANDLE_MODAL: // 设置新增、编辑、查看弹窗数据
-        return {
-          ...state,
-          handleModal: {
-            ...state.handleModal,
-            ...action.payload,
-          },
-        }
-    }
-  }, stateValue)
-
-  /**
-   * @Description 设置搜索表单数据
-   * @Author bihongbin
-   * @Date 2020-09-02 10:33:15
-   */
-  const handleSearchFormList = (data: StateType['searchFormList']) => {
-    dispatch({
-      type: ActionType.SET_SEARCH_FORM_LIST,
-      payload: data,
-    })
-  }
-
-  /**
-   * @Description 设置新增、编辑、查看弹窗数据
-   * @Author bihongbin
-   * @Date 2020-09-02 14:26:03
-   */
-  const handleModalState = (data: Partial<StateType['handleModal']>) => {
-    dispatch({
-      type: ActionType.SET_HANDLE_MODAL,
-      payload: data,
-    })
-  }
+  const [state, setState] = useSetState<StateType>({
+    // 头部搜索数据
+    searchFormList: [],
+    // 表格表头
+    tableColumns: [],
+    // 卡片操作按钮
+    cardHandleButtonList: [],
+    // 详情弹窗
+    handleModal: {
+      visible: false,
+      id: '',
+      title: '新增商品信息',
+      disabled: false,
+      loading: false,
+      saveLoading: false,
+      basicFormList: [], // 基本信息
+      stockFormList: [], // 商品库存
+      inventoryReduction: '1', // 库存减法
+    },
+  })
 
   /**
    * @Description 编辑和查看
@@ -126,24 +81,22 @@ const GoodsMainList = () => {
    */
   const getOpenModal = useCallback(
     (record: AnyObjectType, type: 'look' | 'edit') => {
-      // 查看
-      if (type === 'look') {
-        handleModalState({
-          visible: true,
-          title: '商品信息详情',
-          disabled: true,
-        })
-      }
-      // 编辑
-      if (type === 'edit') {
-        handleModalState({
-          visible: true,
-          title: '编辑商品信息',
-          disabled: false,
-        })
-      }
+      setState((prev) => {
+        prev.handleModal.visible = true
+        // 查看
+        if (type === 'look') {
+          prev.handleModal.title = '商品信息详情'
+          prev.handleModal.disabled = true
+        }
+        // 编辑
+        if (type === 'edit') {
+          prev.handleModal.title = '编辑商品信息'
+          prev.handleModal.disabled = false
+        }
+        return prev
+      })
     },
-    [],
+    [setState],
   )
 
   /**
@@ -161,76 +114,78 @@ const GoodsMainList = () => {
    * @Date 2020-09-02 10:31:25
    */
   useEffect(() => {
-    handleSearchFormList([
-      {
-        componentName: 'Input',
-        name: 'a',
-        placeholder: '商品名称',
-      },
-      {
-        componentName: 'Select',
-        name: 'b',
-        placeholder: '商品分组',
-        selectData: [],
-      },
-      {
-        componentName: 'Select',
-        name: 'c',
-        placeholder: '商品状态',
-        selectData: [],
-      },
-      {
-        componentName: 'Select',
-        name: 'd',
-        placeholder: '商品分类',
-        selectData: [],
-      },
-      {
-        componentName: 'Union',
-        unionConfig: {
-          unionItems: [
-            {
-              componentName: 'Input',
-              name: 'e1',
-              placeholder: '销量',
-            },
-            {
-              componentName: 'Input',
-              name: 'e2',
-              placeholder: '销量',
-            },
-          ],
+    setState({
+      searchFormList: [
+        {
+          componentName: 'Input',
+          name: 'a',
+          placeholder: '商品名称',
         },
-      },
-      {
-        componentName: 'Union',
-        unionConfig: {
-          unionItems: [
-            {
-              componentName: 'Input',
-              name: 'f1',
-              placeholder: '价格',
-            },
-            {
-              componentName: 'Input',
-              name: 'f2',
-              placeholder: '价格',
-            },
-          ],
+        {
+          componentName: 'Select',
+          name: 'b',
+          placeholder: '商品分组',
+          selectData: [],
         },
-      },
-      {
-        componentName: 'Select',
-        name: 'g',
-        placeholder: '商品查看范围',
-        selectData: [],
-      },
-      {
-        componentName: 'RangePicker',
-        name: 'h',
-      },
-    ])
-  }, [])
+        {
+          componentName: 'Select',
+          name: 'c',
+          placeholder: '商品状态',
+          selectData: [],
+        },
+        {
+          componentName: 'Select',
+          name: 'd',
+          placeholder: '商品分类',
+          selectData: [],
+        },
+        {
+          componentName: 'Union',
+          unionConfig: {
+            unionItems: [
+              {
+                componentName: 'Input',
+                name: 'e1',
+                placeholder: '销量',
+              },
+              {
+                componentName: 'Input',
+                name: 'e2',
+                placeholder: '销量',
+              },
+            ],
+          },
+        },
+        {
+          componentName: 'Union',
+          unionConfig: {
+            unionItems: [
+              {
+                componentName: 'Input',
+                name: 'f1',
+                placeholder: '价格',
+              },
+              {
+                componentName: 'Input',
+                name: 'f2',
+                placeholder: '价格',
+              },
+            ],
+          },
+        },
+        {
+          componentName: 'Select',
+          name: 'g',
+          placeholder: '商品查看范围',
+          selectData: [],
+        },
+        {
+          componentName: 'RangePicker',
+          name: 'h',
+        },
+      ],
+    })
+  }, [setState])
 
   /**
    * @Description 设置卡片操作按钮数据
@@ -238,22 +193,24 @@ const GoodsMainList = () => {
    * @Date 2020-09-02 10:29:36
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_CARD_HANDLE_BUTTON_LIST,
-      payload: [
+    setState({
+      cardHandleButtonList: [
         {
           name: '发布商品',
+          authCode: authBasic.ADD,
           icon: 'card_add.png',
           clickConfirm: () => {
-            handleModalState({
-              visible: true,
-              title: '新增商品信息',
+            setState((prev) => {
+              prev.handleModal.visible = true
+              prev.handleModal.id = ''
+              prev.handleModal.title = '新增商品信息'
+              return prev
             })
           },
         },
       ],
     })
-  }, [])
+  }, [authBasic.ADD, setState])
 
   /**
    * @Description 设置表格头
@@ -261,9 +218,8 @@ const GoodsMainList = () => {
    * @Date 2020-09-02 10:28:25
    */
   useEffect(() => {
-    dispatch({
-      type: ActionType.SET_COLUMNS,
-      payload: [
+    setState({
+      tableColumns: [
         {
           title: '商品编号',
           dataIndex: 'a1',
@@ -327,18 +283,22 @@ const GoodsMainList = () => {
             // 查看
             operatingData.push({
               name: '查看',
-              onClick: () => getOpenModal(record, 'look'),
+              authCode: authBasic.QUERY,
               svg: 'table_see.png',
+              onClick: () => getOpenModal(record, 'look'),
             })
             // 编辑
             operatingData.push({
               name: '编辑',
-              onClick: () => getOpenModal(record, 'edit'),
+              authCode: authBasic.EDIT,
               svg: 'table_edit.png',
+              onClick: () => getOpenModal(record, 'edit'),
             })
             // 删除
             operatingData.push({
               name: '删除',
+              authCode: authBasic.DELETE,
+              svg: 'table_delete.png',
               onClick: () => {
                 if (tableRef.current) {
                   handleRowDelete(
@@ -348,14 +308,19 @@ const GoodsMainList = () => {
                   )
                 }
               },
-              svg: 'table_delete.png',
             })
             return <TableOperate operateButton={operatingData} />
           },
         },
       ],
     })
-  }, [getOpenModal])
+  }, [
+    authBasic.DELETE,
+    authBasic.EDIT,
+    authBasic.QUERY,
+    getOpenModal,
+    setState,
+  ])
 
   /**
    * @Description 设置商品信息弹窗数据
@@ -363,9 +328,9 @@ const GoodsMainList = () => {
    * @Date 2020-09-02 14:43:36
    */
   useEffect(() => {
-    handleModalState({
+    setState((prev) => {
       // 基本信息
-      basicFormList: [
+      prev.handleModal.basicFormList = [
         {
           componentName: 'Radio',
           name: 'a',
@@ -568,9 +533,9 @@ const GoodsMainList = () => {
           },
           disabled: state.handleModal.disabled,
         },
-      ],
+      ]
       // 商品库存
-      stockFormList: [
+      prev.handleModal.stockFormList = [
         {
           componentName: 'Input',
           name: 'a',
@@ -667,9 +632,10 @@ const GoodsMainList = () => {
           ),
           disabled: state.handleModal.disabled,
         },
-      ],
+      ]
+      return prev
     })
-  }, [state.handleModal.disabled, state.handleModal.inventoryReduction])
+  }, [setState, state.handleModal.disabled])
 
   return (
     <>
@@ -699,8 +665,14 @@ const GoodsMainList = () => {
         visible={state.handleModal.visible}
         width={720}
         title={state.handleModal.title}
-        onCancel={() => handleModalState({ visible: false })}
+        onCancel={() => {
+          setState((prev) => {
+            prev.handleModal.visible = false
+            return prev
+          })
+        }}
         getContainer={false}
+        maskClosable={false}
         footer={null}
       >
         <Spin spinning={state.handleModal.loading}>
@@ -759,7 +731,10 @@ const GoodsMainList = () => {
                 className="font-14"
                 size="large"
                 onClick={() => {
-                  handleModalState({ visible: false })
+                  setState((prev) => {
+                    prev.handleModal.visible = false
+                    return prev
+                  })
                 }}
               >
                 取消

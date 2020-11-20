@@ -20,7 +20,7 @@ import GenerateForm, {
   FormListType,
 } from '@/components/GenerateForm'
 import GenerateTable, { TableCallType } from '@/components/GenerateTable'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import { handleRowDelete } from '@/utils'
 import { GlobalConstant } from '@/config'
 import { SxyBadge } from '@/style/module/badge'
@@ -364,16 +364,18 @@ const ClassesMainList = () => {
         fixed: 'right',
         width: 135,
         render: (value: number, record: AnyObjectType) => {
-          const operatingData = []
+          const operatingData: TableOperateButtonType[] = []
           // 编辑
           operatingData.push({
             name: '编辑',
+            type: 'edit',
             onClick: () => getClassDetails(record),
             svg: 'table_edit.png',
           })
           // 删除
           operatingData.push({
             name: '删除',
+            type: 'delete',
             onClick: () => {
               if (classListTableRef.current) {
                 handleRowDelete([record.id], deleteBasicQtyList, formSubmit)

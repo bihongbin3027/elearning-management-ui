@@ -11,7 +11,7 @@ import LayoutFormModal, {
 } from '@/components/LayoutFormModal'
 import { SxyButton } from '@/style/module/button'
 import { AnyObjectType } from '@/typings'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import { handleRowDelete } from '@/utils'
 import { SxyBadge } from '@/style/module/badge'
 import { SxyIcon } from '@/style/module/icon'
@@ -328,10 +328,11 @@ const PublicClues = () => {
         fixed: 'right',
         width: 90,
         render: (value: number, record: AnyObjectType) => {
-          const operatingData = []
+          const operatingData: TableOperateButtonType[] = []
           // 查看
           operatingData.push({
             name: '查看',
+            type: 'lookOver',
             onClick: () => {
               handleModalState({
                 visible: true,

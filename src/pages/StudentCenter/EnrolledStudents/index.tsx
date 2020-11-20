@@ -12,7 +12,7 @@ import LayoutFormModal, {
 import GenerateTable from '@/components/GenerateTable'
 import { SxyButton } from '@/style/module/button'
 import { AnyObjectType } from '@/typings'
-import TableOperate from '@/components/TableOperate'
+import TableOperate, { TableOperateButtonType } from '@/components/TableOperate'
 import { handleRowDelete } from '@/utils'
 import { SxyBadge } from '@/style/module/badge'
 import {
@@ -195,10 +195,11 @@ const EnrolledStudents = () => {
         fixed: 'right',
         width: 135,
         render: (value: number, record: any) => {
-          const operatingData = []
+          const operatingData: TableOperateButtonType[] = []
           // 编辑
           operatingData.push({
             name: '编辑',
+            type: 'edit',
             onClick: () => {
               handleModalState({
                 visible: true,
@@ -213,6 +214,7 @@ const EnrolledStudents = () => {
           // 删除
           operatingData.push({
             name: '删除',
+            type: 'delete',
             onClick: () => {
               handleRowDelete([record.id], deleteBasicQtyList, () =>
                 mainListTableRef.current?.getTableList(),

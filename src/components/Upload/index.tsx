@@ -3,14 +3,16 @@
  * @Author bihongbin
  * @Date 2020-07-10 16:56:39
  * @LastEditors bihongbin
- * @LastEditTime 2020-08-27 11:47:15
+ * @LastEditTime 2020-11-16 12:02:22
  */
 
 import React, { useState } from 'react'
 import { Upload, message } from 'antd'
+import { useSelector } from 'react-redux'
 import { LoadingOutlined } from '@ant-design/icons'
 import { UploadChangeParam, UploadProps, RcFile } from 'antd/es/upload'
 import _ from 'lodash'
+import { RootStateType } from '@/store/rootReducer'
 import { AnyObjectType } from '@/typings'
 
 type FileType =
@@ -33,6 +35,7 @@ type PropsType = {
 
 const UploadF = (props: PropsType) => {
   const [loading, setLoading] = useState(false)
+  const auth = useSelector((state: RootStateType) => state.auth)
 
   /**
    * @Description 上传校验
@@ -89,14 +92,15 @@ const UploadF = (props: PropsType) => {
     // 上传成功
     if (status === 'done') {
       setLoading(false)
-      console.log('上传成功的文件列表', fileObject.fileList)
-      // 上传失败提示
-      if (fileObject.file.response.code === -1) {
-        message.warn(fileObject.file.response.message, 1.5)
-      }
-      // 上传成功发送内容给父组件
-      if (props.uploadSuccess) {
-        props.uploadSuccess(fileObject.fileList)
+      console.log('上传的文件列表', fileObject.fileList)
+      if (fileObject.file.response.code === 1) {
+        // 上传成功发送内容给父组件
+        if (props.uploadSuccess) {
+          props.uploadSuccess(fileObject.fileList)
+        }
+      } else {
+        // 上传失败提示
+        message.warn(fileObject.file.response.msg, 1.5)
       }
     }
     // 上传失败
@@ -134,6 +138,7 @@ const UploadF = (props: PropsType) => {
       onPreview={handlePreview}
       beforeUpload={handleBeforeUpload}
       transformFile={handleTransformFile}
+      headers={{ token: auth.authToken || '' }}
       {...props}
     >
       {props.children}

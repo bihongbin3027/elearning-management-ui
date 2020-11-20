@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-07-31 09:53:54
  * @LastEditors bihongbin
- * @LastEditTime 2020-09-18 15:33:49
+ * @LastEditTime 2020-11-10 18:14:49
  */
 
 import React, {
@@ -14,8 +14,9 @@ import React, {
   useImperativeHandle,
   forwardRef,
 } from 'react'
-import { Button, Divider, Row, Col, Card, Space } from 'antd'
-import { TablePaginationConfig, TableProps } from 'antd/es/table'
+import _ from 'lodash'
+import { Button, Row, Col, Card, Space } from 'antd'
+import { TablePaginationConfig, TableProps, ColumnType } from 'antd/es/table'
 import moment from 'moment'
 import GenerateForm, {
   FormCallType,
@@ -23,8 +24,10 @@ import GenerateForm, {
 } from '@/components/GenerateForm'
 import GenerateTable, { TableCallType } from '@/components/GenerateTable'
 import Empty from '@/components/Empty'
-import { AnyObjectType, AjaxResultType } from '@/typings'
+import { AnyObjectType, PromiseAxiosResultType } from '@/typings'
 import { GlobalConstant } from '@/config'
+import { addSelectMenuAll } from '@/utils'
+import CardHeaderButton from '@/components/CardHeaderButton'
 import { SxyButton, SxyButtonIconGroup } from '@/style/module/button'
 import { SxyIcon } from '@/style/module/icon'
 
@@ -33,22 +36,15 @@ export type LayoutTableCallType = TableCallType &
 export type FormFuncCallType = FormCallType // 表单可使用的方法类型
 export type FormListCallType = FormListType // 表单list数据类型
 
-type ReducerType = (state: StateType, action: Action) => StateType
 export interface CardButtonType {
   name: string
+  authCode?: string
   icon?: string
-  type?:
-    | 'text'
-    | 'link'
-    | 'ghost'
-    | 'default'
-    | 'primary'
-    | 'dashed'
-    | undefined
+  type?: 'text' | 'link' | 'ghost' | 'default' | 'primary' | 'dashed'
   clickConfirm: () => void
 }
 
-interface SizeType {
+export interface SizeType {
   xs?: number // 屏幕 < 576px 响应式栅格
   sm?: number // 屏幕 ≥ 576px 响应式栅格
   md?: number // 屏幕 ≥ 768px 响应式栅格
@@ -63,11 +59,14 @@ interface RenderType {
 }
 
 export interface LayoutTableListProp {
-  api?: (data: any) => Promise<AjaxResultType> // 数据来源接口
+  api?: (data: any) => PromiseAxiosResultType // 数据来源接口
+  data?: AnyObjectType[] // 列表数据
+  layoutTableListAuthCode?: string // 权限码（用来控制权限按钮是否显示）
   autoGetList?: boolean // 是否开启默认查询功能
   middleEmpty?: boolean // 是否显示无数据的状态
   searchClassName?: true // 是否去掉search-form样式
   searchFormList?: FormListType[] // 搜索表单数据
+  searchFormListSize?: SizeType
   // 时间类型格式转换
   searchFormDateTransform?: {
     name: string // 需要转换的默认参数
@@ -82,16 +81,19 @@ export interface LayoutTableListProp {
   rightRender?: RenderType // 右侧需要渲染的额外元素和尺寸
   censusTips?: React.ReactNode // 一些统计提示（或其他jsx元素）
   cardTopTitle?: React.ReactNode // 卡片标题
-  cardTopButton?: CardButtonType[] // 卡片头部操作按钮
+  cardTopButton?: CardButtonType[] | JSX.Element // 卡片头部操作按钮
   // 表格头数据和表格尺寸
   tableColumnsList: {
     rowType?: 'checkbox' | 'radio' | undefined // 是否开启表格行选中 checkbox多选 radio单选
-    list: AnyObjectType[] // 表格头数据
+    list: ColumnType<AnyObjectType>[] // 表格头数据
+    onSelect?: (selectedRows: AnyObjectType[], selectedRowKeys: any[]) => void // 行选中回调
     tableConfig?: TableProps<any> // 自定义配置，支持antd官方表格所有参数
     size?: SizeType // 表格区域宽度
   }
   paginationConfig?: false | TablePaginationConfig // 控制分页格式
 }
+
+type ReducerType = (state: StateType, action: Action) => StateType
 
 interface Action {
   type: ActionType
@@ -120,6 +122,28 @@ const stateValue = {
   },
 }
 
+const reducer: ReducerType = (state, action) => {
+  switch (action.type) {
+    case ActionType.SET_AUTO_GET_LIST: // 设置是否开启默认查询功能
+      return {
+        ...state,
+        autoGetList: action.payload,
+      }
+    case ActionType.SET_SEARCH_RIGHT_BTN_OPEN: // 设置是否显示头部搜索右侧刷新和筛选按钮
+      return {
+        ...state,
+        searchRightBtnOpen: action.payload,
+      }
+    case ActionType.SET_TABLE_WIDTH: // 设置表格的宽度
+      return {
+        ...state,
+        tableWidth: action.payload,
+      }
+    default:
+      return state
+  }
+}
+
 const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
   const { formSearchColConfig } = GlobalConstant
   const {
@@ -134,27 +158,7 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
   } = props
   const searchForm = useRef<FormCallType>(null)
   const tableRef = useRef<TableCallType>(null)
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_AUTO_GET_LIST: // 设置是否开启默认查询功能
-        return {
-          ...state,
-          autoGetList: action.payload,
-        }
-      case ActionType.SET_SEARCH_RIGHT_BTN_OPEN: // 设置是否显示头部搜索右侧刷新和筛选按钮
-        return {
-          ...state,
-          searchRightBtnOpen: action.payload,
-        }
-      case ActionType.SET_TABLE_WIDTH: // 设置表格的宽度
-        return {
-          ...state,
-          tableWidth: action.payload,
-        }
-      default:
-        return state
-    }
-  }, stateValue)
+  const [state, dispatch] = useReducer<ReducerType>(reducer, stateValue)
 
   /**
    *
@@ -167,6 +171,24 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
       searchForm.current.formReset()
     }
     formSubmit()
+  }
+
+  /**
+   * @Description 渲染卡片头右测内容
+   * @Author bihongbin
+   * @Date 2020-10-16 11:16:28
+   */
+  const cardTopRightRender = () => {
+    if (cardTopButton && _.isArray(cardTopButton)) {
+      return (
+        <CardHeaderButton
+          buttonList={cardTopButton}
+          menuCode={props.layoutTableListAuthCode}
+        />
+      )
+    } else {
+      return cardTopButton
+    }
   }
 
   /**
@@ -202,10 +224,11 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
             }
           }
         }
-        if (props.searchCallback) {
-          props.searchCallback(result) // 查询回调
-        }
-        tableRef.current.getTableList(result)
+        tableRef.current.getTableList(result, () => {
+          if (props.searchCallback) {
+            props.searchCallback(result) // 查询回调
+          }
+        })
       }
     }
   }, [props])
@@ -269,10 +292,22 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
    * @Date 2020-07-31 14:49:18
    */
   useImperativeHandle<any, LayoutTableCallType>(ref, () => ({
-    // 调用api获取数据
-    getTableList: (values) => {
+    // 设置loading
+    setTableLoading: (data) => {
       if (tableRef.current) {
-        tableRef.current.getTableList(values)
+        tableRef.current.setTableLoading(data)
+      }
+    },
+    // 设置表格选中
+    setRowSelected: (selectedRowKeys) => {
+      if (tableRef.current) {
+        tableRef.current.setRowSelected(selectedRowKeys)
+      }
+    },
+    // 调用api获取数据
+    getTableList: (values, callback) => {
+      if (tableRef.current) {
+        tableRef.current.getTableList(values, callback)
       }
     },
     // 设置表单值
@@ -317,9 +352,9 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
             <GenerateForm
               className={!props.searchClassName ? 'search-form' : undefined}
               rowGridConfig={{ gutter: 10 }}
-              colGirdConfig={formSearchColConfig}
+              colGirdConfig={props.searchFormListSize || formSearchColConfig}
               ref={searchForm}
-              list={searchFormList}
+              list={addSelectMenuAll(searchFormList)}
               render={() => {
                 if (searchFormList && searchFormList.length) {
                   return (
@@ -369,41 +404,16 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
               <Card
                 className={`table-card ${!cardTopTitle && 'card-header-none'}`}
                 title={cardTopTitle}
-                extra={
-                  <Space size={0}>
-                    {cardTopButton && cardTopButton.length
-                      ? cardTopButton.map((item, index) => (
-                          <div key={index}>
-                            <Button
-                              className="btn-text-icon"
-                              onClick={item.clickConfirm}
-                              type={item.type ? item.type : 'text'}
-                            >
-                              {item.icon ? (
-                                <SxyIcon
-                                  width={16}
-                                  height={16}
-                                  name={item.icon}
-                                />
-                              ) : null}
-                              {item.name}
-                            </Button>
-                            {cardTopButton.length > 1 &&
-                            index < cardTopButton.length - 1 ? (
-                              <Divider type="vertical" />
-                            ) : null}
-                          </div>
-                        ))
-                      : null}
-                  </Space>
-                }
+                extra={cardTopRightRender()}
               >
                 {props.censusTips && props.censusTips}
                 <GenerateTable
                   ref={tableRef}
                   rowType={props.tableColumnsList.rowType}
                   apiMethod={api}
+                  data={props.data}
                   columns={tableColumnsList.list}
+                  onSelect={props.tableColumnsList.onSelect}
                   paginationConfig={props.paginationConfig}
                   tableConfig={tableColumnsList.tableConfig}
                 />

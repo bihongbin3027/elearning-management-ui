@@ -47,7 +47,7 @@ const GoodsDetailsView = (props: PropType) => {
 
   return (
     <Modal
-      width={800}
+      width={700}
       visible={props.visible}
       title="服务订单详情"
       onCancel={props.onCancel}
@@ -281,7 +281,7 @@ const GoodsDetailsView = (props: PropType) => {
                       <Col>个人</Col>
                     </Row>
                   </Col>
-                  <Col span={8}>
+                  <Col span={10}>
                     <Row>
                       <Col className="text-desc" span={10}>
                         发票抬头：
