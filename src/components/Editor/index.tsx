@@ -1,88 +1,69 @@
-import React, {
-  useReducer,
-  useImperativeHandle,
-  forwardRef,
-  useRef,
-  useMemo,
-} from 'react'
+import React, { useImperativeHandle, forwardRef, useRef, useMemo } from 'react'
 import BraftEditor, {
   BraftEditorProps,
   ControlType,
   ExtendControlType,
 } from 'braft-editor'
 import { ContentUtils } from 'braft-utils'
+import FileSelection from '@/components/FileSelection'
+import useSetState from '@/hooks/useSetState'
 import 'braft-editor/dist/index.css'
 import { EditorCallType } from '@/components/Editor/interface'
 import { EditorBox } from '@/components/Editor/style'
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
 interface StateType {
   controls: ControlType[]
-  editorValue: any
-}
-
-enum ActionType {
-  SET_EDITOR_VALUE = '[SetEditorValue Action]',
-}
-
-const stateValue: StateType = {
-  controls: [
-    'undo',
-    'redo',
-    'separator',
-    'font-size',
-    'line-height',
-    'letter-spacing',
-    'separator',
-    'text-color',
-    'bold',
-    'italic',
-    'underline',
-    'strike-through',
-    'separator',
-    'superscript',
-    'subscript',
-    'remove-styles',
-    'emoji',
-    'separator',
-    'text-indent',
-    'text-align',
-    'separator',
-    'headings',
-    'list-ul',
-    'list-ol',
-    'blockquote',
-    'code',
-    'separator',
-    'link',
-    'separator',
-    'hr',
-    'separator',
-    'separator',
-    'clear',
-  ],
-  editorValue: BraftEditor.createEditorState(null), // 编辑器实例（暂时没用到）
+  editorState: any
+  fileModal: {
+    selectedMethod: 'radio' | 'checkbox'
+    visible: boolean
+  }
 }
 
 const Editor = (props: BraftEditorProps, ref: any) => {
   const editorRef = useRef<any>()
-  const [state] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_EDITOR_VALUE: {
-        // 设置编辑器实例（暂时没用到）
-        return {
-          ...state,
-          editorValue: action.payload,
-        }
-      }
-    }
-  }, stateValue)
+  const [state, setState] = useSetState<StateType>({
+    controls: [
+      'undo',
+      'redo',
+      'separator',
+      'font-size',
+      'line-height',
+      'letter-spacing',
+      'separator',
+      'text-color',
+      'bold',
+      'italic',
+      'underline',
+      'strike-through',
+      'separator',
+      'superscript',
+      'subscript',
+      'remove-styles',
+      'emoji',
+      'separator',
+      'text-indent',
+      'text-align',
+      'separator',
+      'headings',
+      'list-ul',
+      'list-ol',
+      'blockquote',
+      'code',
+      'separator',
+      'link',
+      'separator',
+      'hr',
+      'separator',
+      'separator',
+      'clear',
+    ],
+    editorState: BraftEditor.createEditorState(null), // 编辑器实例
+    fileModal: {
+      selectedMethod: 'checkbox',
+      visible: false,
+    },
+  })
 
   /**
    * @Description 自定义扩展控件
@@ -96,14 +77,15 @@ const Editor = (props: BraftEditorProps, ref: any) => {
         type: 'button',
         text: '插入图片',
         onClick: () => {
-          editorRef.current.setValue(
-            ContentUtils.insertText(editorRef.current.getValue(), '你好啊！'),
-          )
+          setState((prev) => {
+            prev.fileModal.visible = true
+            return prev
+          })
         },
       },
     ]
     return arr
-  }, [])
+  }, [setState])
 
   /**
    * @Description 暴漏给父组件调用
@@ -111,11 +93,19 @@ const Editor = (props: BraftEditorProps, ref: any) => {
    * @Date 2020-09-16 16:47:40
    */
   useImperativeHandle<any, EditorCallType>(ref, () => ({
-    // 获取编辑器实例
+    // 编辑器实例
     getEditorObject: () => {
-      // 在父级使用editRef.current?.getEditorObject().getValue().toHTML()获取内容
-      console.log('编辑器实例：', editorRef.current)
-      return editorRef.current
+      return state.editorState
+    },
+    // 设置编辑器内容
+    setEditorValue: (value) => {
+      setState({
+        editorState: BraftEditor.createEditorState(value),
+      })
+    },
+    // 获取编辑器内容
+    getEditorValue: () => {
+      return state.editorState.toHTML()
     },
   }))
 
@@ -123,9 +113,51 @@ const Editor = (props: BraftEditorProps, ref: any) => {
     <EditorBox>
       <BraftEditor
         ref={editorRef}
+        contentStyle={{ fontSize: '12px', ...props.contentStyle }}
         controls={state.controls}
         extendControls={extendControls}
+        value={state.editorState}
+        onChange={(editorState) => {
+          setState({
+            editorState,
+          })
+        }}
         {...props}
+      />
+      <FileSelection
+        mode="modal"
+        fileExt="jpeg,jpg,png,gif"
+        selectedMethod={state.fileModal.selectedMethod}
+        visible={state.fileModal.visible}
+        openManagement={false}
+        onCancel={() =>
+          setState((prev) => {
+            prev.fileModal.visible = false
+            return prev
+          })
+        }
+        onConfirm={(data) => {
+          // 筛选出图片类型数据
+          const filterOutPictures = data.filter(
+            (item) =>
+              item.fileExt === 'jpeg' ||
+              item.fileExt === 'jpg' ||
+              item.fileExt === 'png' ||
+              item.fileExt === 'gif',
+          )
+          setState({
+            editorState: ContentUtils.insertMedias(
+              state.editorState,
+              filterOutPictures.map((item) => {
+                return {
+                  id: item.id,
+                  type: 'IMAGE',
+                  url: item.fileUrl,
+                }
+              }),
+            ),
+          })
+        }}
       />
     </EditorBox>
   )

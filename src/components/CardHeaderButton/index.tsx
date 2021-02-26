@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-11-10 17:20:05
  * @LastEditors bihongbin
- * @LastEditTime 2020-11-10 18:16:53
+ * @LastEditTime 2021-02-24 16:16:16
  */
 
 import React, { useMemo } from 'react'
@@ -76,4 +76,4 @@ function CardHeaderButton(props: PropsType) {
   )
 }
 
-export default CardHeaderButton
+export default React.memo(CardHeaderButton)

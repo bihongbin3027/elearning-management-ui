@@ -54,7 +54,7 @@ const ResetPasswordView = (props: PropType) => {
               props.onConfirm()
             }
           } catch (error) {
-            message.warn(`${props.title}失败`, 1.5)
+            console.warn(`${props.title}失败`)
           }
           setState({
             saveLoading: false,
@@ -129,29 +129,21 @@ const ResetPasswordView = (props: PropType) => {
         <Col span={23}>
           <GenerateForm
             ref={formRef}
-            className="form-ash-theme form-large-font14"
+            className="form-ash-theme"
             formConfig={{
-              size: 'large',
               labelCol: { span: 24 },
             }}
-            rowGridConfig={{ gutter: [40, 0] }}
+            rowGridConfig={{ gutter: [20, 0] }}
             colGirdConfig={{ span: 24 }}
             list={state.formList}
           />
         </Col>
       </Row>
-      <Row className="mt-10 mb-5" justify="center">
+      <Row className="mt-5 mb-2" justify="center">
         <Col>
+          <Button onClick={() => props.onCancel()}>关闭</Button>
           <Button
-            className="font-14"
-            size="large"
-            onClick={() => props.onCancel()}
-          >
-            返回
-          </Button>
-          <Button
-            className="font-14 ml-5"
-            size="large"
+            className="ml-5"
             type="primary"
             loading={state.saveLoading}
             onClick={handleModalSave}

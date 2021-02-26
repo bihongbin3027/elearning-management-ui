@@ -3,32 +3,18 @@
  * @Author bihongbin
  * @Date 2020-07-10 16:56:39
  * @LastEditors bihongbin
- * @LastEditTime 2020-11-16 12:02:22
+ * @LastEditTime 2021-01-15 16:42:46
  */
 
 import React, { useState } from 'react'
 import { Upload, message } from 'antd'
 import { useSelector } from 'react-redux'
 import { LoadingOutlined } from '@ant-design/icons'
-import { UploadChangeParam, UploadProps, RcFile } from 'antd/es/upload'
-import _ from 'lodash'
+import { UploadChangeParam, UploadProps } from 'antd/es/upload'
 import { RootStateType } from '@/store/rootReducer'
 import { AnyObjectType } from '@/typings'
 
-type FileType =
-  | 'xls'
-  | 'xlsx'
-  | 'txt'
-  | 'pdf'
-  | 'docx'
-  | 'jpg'
-  | 'png'
-  | 'svg'
-  | 'mp3'
-  | 'mp4' // 支持上传的文件格式
-
 type PropsType = {
-  uploadType?: FileType[] // 支持上传的文件格式
   children: JSX.Element // 上传选择文件的样式
   uploadSuccess?: (data: AnyObjectType[]) => void // 上传成功回调
 } & UploadProps
@@ -36,29 +22,6 @@ type PropsType = {
 const UploadF = (props: PropsType) => {
   const [loading, setLoading] = useState(false)
   const auth = useSelector((state: RootStateType) => state.auth)
-
-  /**
-   * @Description 上传校验
-   * @Author bihongbin
-   * @Date 2020-07-15 16:41:34
-   */
-  const handleBeforeUpload = (file: RcFile, fileList: RcFile[]) => {
-    let type = file.name.match(/\.([0-9a-z]+)(?:[?#]|$)/i)
-    return new Promise<any>((resolve, reject) => {
-      if (
-        _.isArray(props.uploadType) &&
-        props.uploadType.length &&
-        _.isArray(type) &&
-        type.length
-      ) {
-        if (!props.uploadType.includes(type[1] as any)) {
-          message.error(`您只能上传${props.uploadType.join('、')}文件`)
-          reject(fileList)
-        }
-      }
-      resolve(fileList)
-    })
-  }
 
   /**
    * @Description 上传文件转换-文件名使用encodeURIComponent编码
@@ -136,8 +99,7 @@ const UploadF = (props: PropsType) => {
     <Upload
       onChange={handleChange}
       onPreview={handlePreview}
-      beforeUpload={handleBeforeUpload}
-      transformFile={handleTransformFile}
+      beforeUpload={handleTransformFile}
       headers={{ token: auth.authToken || '' }}
       {...props}
     >

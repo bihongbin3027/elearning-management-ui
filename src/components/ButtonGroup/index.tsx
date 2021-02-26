@@ -28,6 +28,7 @@ type Action = {
 interface StateType {
   type: ButtonGroupTypeProps['checkType']
   deleteOpen: boolean
+  size?: ButtonGroupTypeProps['size']
   data: ButtonGroupTypeProps['data']
 }
 
@@ -181,26 +182,24 @@ const ButtonGroup = (props: ButtonGroupTypeProps, ref: any) => {
   }))
 
   return (
-    <Row>
+    <Row className={props.className}>
       {state.data.map((item, index) => (
-        <span className={`position ${props.buttonClassName}`} key={index}>
-          <SxyButton
-            mode={item.selected ? 'primary' : 'dust'}
-            border={false}
-            onClick={() => handleSelected(item, index)}
-          >
-            {item.name}
-            {state.deleteOpen ? (
-              <CloseOutlined
-                onClick={() => handleDelete(index)}
-                className="sxy-button-close"
-              />
-            ) : null}
-          </SxyButton>
-        </span>
+        <SxyButton
+          className={`position ${props.buttonClassName}`}
+          key={index}
+          size={props.size}
+          mode={item.selected ? 'primary' : 'dust'}
+          border={false}
+          onClick={() => handleSelected(item, index)}
+        >
+          {item.name}
+          {state.deleteOpen ? (
+            <CloseOutlined onClick={() => handleDelete(index)} />
+          ) : null}
+        </SxyButton>
       ))}
     </Row>
   )
 }
 
-export default forwardRef(ButtonGroup)
+export default React.memo(forwardRef(ButtonGroup))

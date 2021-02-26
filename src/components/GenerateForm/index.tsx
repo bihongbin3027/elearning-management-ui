@@ -3,15 +3,16 @@
  * @Author bihongbin
  * @Date 2020-06-23 10:46:52
  * @LastEditors bihongbin
- * @LastEditTime 2020-11-11 14:25:57
+ * @LastEditTime 2021-02-25 14:36:08
  */
 
 import React, {
   useImperativeHandle,
   forwardRef,
-  useState,
   useMemo,
+  useRef,
   useEffect,
+  useCallback,
 } from 'react'
 import {
   Row,
@@ -20,6 +21,7 @@ import {
   Form,
   Input,
   Select,
+  Cascader,
   DatePicker,
   Switch,
   Spin,
@@ -30,18 +32,23 @@ import {
 import moment from 'moment'
 import { RowProps } from 'antd/es/row'
 import { ColProps } from 'antd/es/col'
-import { DataNode } from 'rc-tree-select/es/interface'
 import { FormProps, Rule } from 'antd/es/form'
+import { DataNode } from 'rc-tree-select/es/interface'
+import { CascaderOption } from 'rc-cascader/es/Cascader'
 import { FieldData } from 'rc-field-form/es/interface'
+import { DatePickerProps } from 'antd/es/date-picker'
 import { v4 as uuidV4 } from 'uuid'
 import _ from 'lodash'
+import useSetState from '@/hooks/useSetState'
 import { AnyObjectType, SelectType } from '@/typings'
+import { getRegionList } from '@/api/layout'
+import { getBaseRegionCountry } from '@/api/basicServices'
 
 type remoteValueType = string | undefined
 type remotePromiseType = (value: remoteValueType) => Promise<SelectType[]>
 
 interface UnionType {
-  componentName: 'Input' | 'Select'
+  componentName: 'Input' | 'Select' | 'DatePicker'
   name: string // 字段名
   placeholder?: string
   selectData?: SelectType[]
@@ -58,6 +65,7 @@ export interface FormListType {
     | 'TextArea'
     | 'AutoComplete'
     | 'Select'
+    | 'Multiple'
     | 'RemoteSearch'
     | 'DatePicker'
     | 'RangePicker'
@@ -66,6 +74,7 @@ export interface FormListType {
     | 'Checkbox'
     | 'TreeSelect'
     | 'Union'
+    | 'RegionSelection'
   name?: string // 字段名
   label?: string | React.ReactNode // 标题
   dependencies?: (string | number)[] // 依赖字段
@@ -88,6 +97,7 @@ export interface FormListType {
       | 'search'
       | 'color'
   }
+  datePickerConfig?: DatePickerProps // datePicker 可选类型
   unionConfig?: {
     // 要显示n个表单的类型
     unionItems: UnionType[]
@@ -96,6 +106,11 @@ export interface FormListType {
   remoteConfig?: {
     remoteApi: remotePromiseType // 远程搜索的api
     remoteMode?: 'multiple' | 'tags' // 远程搜索模式为多选或标签
+  }
+  // 地区选择
+  regionSelectionConfig?: {
+    isDomestic?: boolean // true 全球 false 国内
+    loadData?: CascaderOption[] // 地区选择数据
   }
   rows?: number // TextArea高度
   rules?: Rule[] // 表单验证
@@ -127,6 +142,16 @@ interface GenerateFormProp {
 const { Option } = Select
 const { RangePicker } = DatePicker
 
+interface StateType {
+  update: boolean
+  remoteFetching: boolean
+  remoteData: {
+    [key: string]: SelectType[]
+  }
+  domesticFirstData: CascaderOption[]
+  foreignFirstData: CascaderOption[]
+}
+
 const GenerateForm = (props: GenerateFormProp, ref: any) => {
   const [form] = Form.useForm()
   let {
@@ -137,10 +162,14 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
     list,
     render,
   } = props
-  const [remoteFetching, setRemoteFetching] = useState(false) // 远程搜索loading
-  const [remoteData, setRemoteData] = useState<{ [key: string]: SelectType[] }>(
-    {},
-  ) // 远程搜索数据结果
+  const remoteRef = useRef<StateType['remoteData']>({})
+  const [state, setState] = useSetState<StateType>({
+    update: false, // 取反值强制渲染dom
+    remoteFetching: false, // 远程搜索loading
+    remoteData: {}, // 远程搜索数据结果
+    domesticFirstData: [], // 国内第一级数据
+    foreignFirstData: [], // 全球第一级数据
+  })
 
   /**
    * @Description 缓存生成的随机id
@@ -154,20 +183,91 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
    * @Author bihongbin
    * @Date 2020-07-25 10:01:02
    */
-  const fetchRemote = (
-    value: remoteValueType,
-    fieldName: string | undefined,
-    remoteApi?: remotePromiseType,
-  ) => {
-    if (remoteApi) {
-      setRemoteFetching(true)
-      remoteApi(value).then((res) => {
-        setRemoteFetching(false)
+  const fetchRemote = useCallback(
+    (
+      value: remoteValueType,
+      fieldName: string | undefined,
+      remoteApi?: remotePromiseType,
+    ) => {
+      if (remoteApi) {
+        setState({
+          remoteFetching: true,
+        })
         if (fieldName) {
-          setRemoteData({
-            [fieldName]: res,
-          })
+          remoteRef.current[fieldName] = [] // 优化，防止fetchRemote被多次加载
         }
+        remoteApi(value).then((res) => {
+          setState({
+            remoteFetching: false,
+          })
+          if (fieldName) {
+            setState((prev) => {
+              prev.remoteData[fieldName] = res
+              return prev
+            })
+          }
+        })
+      }
+    },
+    [setState],
+  )
+
+  /**
+   * @Description 查询地址接口
+   * @Author bihongbin
+   * @Date 2021-01-27 15:14:56
+   */
+  const regionGetApi = async (params: AnyObjectType) => {
+    params.size = 200 // 默认查询200条
+    params.status = 1
+    return await getRegionList(params)
+  }
+
+  /**
+   * @Description 格式化地区
+   * @Author bihongbin
+   * @Date 2021-01-27 15:01:15
+   */
+  const regionFormatList = useCallback(
+    (data: AnyObjectType[], bool: boolean = false) => {
+      return data.map((item) => ({
+        label: item.cName,
+        value: item.regionCode,
+        id: item.id,
+        isLeaf: bool,
+      }))
+    },
+    [],
+  )
+
+  /**
+   * @Description 地区选择数据查询
+   * @Author bihongbin
+   * @Date 2021-01-27 15:00:34
+   */
+  const regionLoadData = async (
+    selectedOptions: CascaderOption[] | undefined,
+  ) => {
+    if (selectedOptions) {
+      const targetOption = selectedOptions[selectedOptions.length - 1]
+      targetOption.loading = true
+      const result = await regionGetApi({
+        parentId: targetOption.id,
+      })
+      targetOption.loading = false
+      if (_.isArray(result.data.content)) {
+        if (result.data.content.length) {
+          targetOption.children = regionFormatList(
+            result.data.content,
+            // selectedOptions.length < 3 ? false : true, // 默认只查到区
+            false,
+          )
+        } else {
+          targetOption.isLeaf = true
+        }
+      }
+      setState({
+        update: !state.update, // 强制更新
       })
     }
   }
@@ -197,6 +297,11 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
                 ))
               : null}
           </Select>
+        )
+      }
+      if (m.componentName === 'DatePicker') {
+        return (
+          <DatePicker disabled={item.disabled} placeholder={m.placeholder} />
         )
       }
     }
@@ -278,14 +383,35 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
             </Select>
           )
           break
+        case 'Multiple':
+          childForm = (
+            <Select
+              mode="multiple"
+              allowClear
+              disabled={item.disabled}
+              placeholder={item.placeholder}
+            >
+              {item.selectData
+                ? item.selectData.map((s, k) => (
+                    <Option value={s.value} key={k}>
+                      {s.label}
+                    </Option>
+                  ))
+                : null}
+            </Select>
+          )
+          break
         case 'RemoteSearch':
           childForm = (
             <Select
               mode={item.remoteConfig?.remoteMode}
               disabled={item.disabled}
               placeholder={item.placeholder}
-              notFoundContent={remoteFetching ? <Spin size="small" /> : null}
+              notFoundContent={
+                state.remoteFetching ? <Spin size="small" /> : null
+              }
               filterOption={false}
+              allowClear
               showSearch
               // 当获取焦点查询全部
               onFocus={() =>
@@ -295,8 +421,8 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
                 fetchRemote(value, item.name, item.remoteConfig?.remoteApi)
               }
             >
-              {item.name && remoteData[item.name]
-                ? remoteData[item.name].map((s: SelectType, k) => (
+              {item.name && state.remoteData[item.name]
+                ? state.remoteData[item.name].map((s: SelectType, k) => (
                     <Option value={s.value} key={k}>
                       {s.label}
                     </Option>
@@ -310,6 +436,7 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
             <DatePicker
               disabled={item.disabled}
               placeholder={item.placeholder}
+              {...item.datePickerConfig}
             />
           )
           break
@@ -377,7 +504,7 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
             width = `${100 / len}%`
           }
           childForm = (
-            <Row className="form-item-divide" gutter={20}>
+            <Row className="form-item-divide" gutter={16}>
               {item.unionConfig?.unionItems.map((m, k) => (
                 <Col
                   style={{
@@ -401,6 +528,33 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
             </Row>
           )
           break
+        case 'RegionSelection': // 地区选择
+          const propsRegionConfig = item.regionSelectionConfig
+          const isDomestic = item.regionSelectionConfig?.isDomestic
+          let data: CascaderOption[] = [] // 地区选择数据
+          if (
+            propsRegionConfig &&
+            propsRegionConfig.loadData &&
+            propsRegionConfig.loadData.length
+          ) {
+            data = propsRegionConfig.loadData // 从父级传过来的数据
+          } else {
+            if (isDomestic) {
+              data = state.domesticFirstData // 全球
+            } else {
+              data = state.foreignFirstData // 国内
+            }
+          }
+          childForm = (
+            <Cascader
+              disabled={item.disabled}
+              placeholder={item.placeholder}
+              options={data}
+              loadData={(selectedOptions) => regionLoadData(selectedOptions)}
+              changeOnSelect
+            />
+          )
+          break
         default:
           return null
       }
@@ -413,8 +567,10 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
         'componentName',
         'selectData',
         'inputConfig',
+        'datePickerConfig',
         'unionConfig',
         'remoteConfig',
+        'regionSelectionConfig',
         'rows',
         'render',
         'rangePickerPlaceholder',
@@ -425,8 +581,15 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
       if (item.componentName === 'Union') {
         resetItem = _.omit(resetItem, ['name'])
       }
+      // 为防止colProps和colGirdConfig重叠，优先显示colProps
+      let grid = undefined
+      if (item.colProps) {
+        grid = item.colProps
+      } else {
+        grid = colGirdConfig
+      }
       return !item.visible ? (
-        <Col {...colGirdConfig} {...item.colProps} key={index}>
+        <Col {...grid} key={index}>
           <Form.Item
             className={
               item.componentName === 'HideInput' ? 'hide-item' : undefined
@@ -441,41 +604,59 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
     })
   }
 
-  // 暴漏给父组件调用
-  useImperativeHandle<any, FormCallType>(ref, () => ({
-    // 获取对应的字段值
-    formGetValues: (data) => {
-      return form.getFieldsValue(data)
-    },
-    // 设置一组字段状态
-    formSetFields: (fields) => {
-      form.setFields(fields)
-    },
-    // 设置表单值
-    formSetValues: (values) => {
-      form.setFieldsValue(values)
-    },
-    // 提交表单
-    formSubmit: () => {
-      return new Promise((resolve, reject) => {
-        form
-          .validateFields()
-          .then((values) => {
-            resolve(values)
-          })
-          .catch((err) => {
-            console.log('err', err)
-            message.warn('请输入或选择表单必填项', 1.5)
-            reject(false)
-          })
-      })
-    },
-    // 重置表单
-    formReset: () => {
-      form.resetFields()
-      return form.getFieldsValue()
-    },
-  }))
+  /**
+   * @Description 设置默认地区数据（国内还是全球）
+   * @Author bihongbin
+   * @Date 2021-01-27 15:21:41
+   */
+  useEffect(() => {
+    let regionBool = false
+    if (props.list) {
+      for (let item of props.list) {
+        if (item.componentName === 'RegionSelection') {
+          regionBool = true
+          break
+        }
+      }
+    }
+    // 如果组件有componentName === RegionSelection（地区选择类型）
+    if (regionBool) {
+      if (!state.domesticFirstData.length) {
+        getBaseRegionCountry().then((res) => {
+          let content = res.data.content
+          if (_.isArray(content)) {
+            // 过滤掉国内
+            // content = content.filter((item) => item.regionCode !== '1')
+            setState({
+              domesticFirstData: regionFormatList(content),
+            })
+          }
+        })
+      }
+      if (!state.foreignFirstData.length) {
+        // 国内
+        const foreignParams = {
+          subsetLevel: 1,
+          parentId: 1,
+          status: 1,
+        }
+        regionGetApi(foreignParams).then((res) => {
+          let content = res.data.content
+          if (_.isArray(content)) {
+            setState({
+              foreignFirstData: regionFormatList(content),
+            })
+          }
+        })
+      }
+    }
+  }, [
+    props.list,
+    regionFormatList,
+    setState,
+    state.domesticFirstData.length,
+    state.foreignFirstData.length,
+  ])
 
   /**
    * @Description 设置全局表单默认值
@@ -500,28 +681,64 @@ const GenerateForm = (props: GenerateFormProp, ref: any) => {
         }
         // 远程搜索默认查询
         if (item.componentName === 'RemoteSearch') {
-          if (item.remoteConfig && item.remoteConfig.remoteApi) {
-            fetchRemote(undefined, item.name, item.remoteConfig.remoteApi)
+          // remoteRef.current[item.name]，优化，防止fetchRemote被多次加载
+          if (item.name && !remoteRef.current[item.name]) {
+            if (item.remoteConfig && item.remoteConfig.remoteApi) {
+              fetchRemote(undefined, item.name, item.remoteConfig.remoteApi)
+            }
           }
         }
       }
       form.setFieldsValue(obj)
     }
-  }, [form, list])
+  }, [fetchRemote, form, list])
+
+  // 暴漏给父组件调用
+  useImperativeHandle<any, FormCallType>(ref, () => ({
+    // 获取对应的字段值
+    formGetValues: (data) => {
+      return form.getFieldsValue(data)
+    },
+    // 设置一组字段状态
+    formSetFields: (fields) => {
+      form.setFields(fields)
+    },
+    // 设置表单值
+    formSetValues: (values) => {
+      form.setFieldsValue(values)
+    },
+    // 提交表单
+    formSubmit: () => {
+      return new Promise((resolve, reject) => {
+        form
+          .validateFields()
+          .then((values) => {
+            resolve(values)
+          })
+          .catch((err) => {
+            message.warn('请输入或选择表单必填项', 1.5)
+            reject(false)
+          })
+      })
+    },
+    // 重置表单
+    formReset: () => {
+      form.resetFields()
+      return form.getFieldsValue()
+    },
+  }))
 
   return (
-    <>
-      <Form name={uid} className={className} form={form} {...formConfig}>
-        <Row {...rowGridConfig}>
-          {formRender()}
-          {render ? (
-            <Col>
-              <Form.Item>{render && render()}</Form.Item>
-            </Col>
-          ) : null}
-        </Row>
-      </Form>
-    </>
+    <Form name={uid} className={className} form={form} {...formConfig}>
+      <Row {...rowGridConfig}>
+        {formRender()}
+        {render ? (
+          <Col>
+            <Form.Item>{render && render()}</Form.Item>
+          </Col>
+        ) : null}
+      </Row>
+    </Form>
   )
 }
 

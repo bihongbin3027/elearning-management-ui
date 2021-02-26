@@ -3,12 +3,13 @@
  * @Author bihongbin
  * @Date 2020-07-10 16:09:40
  * @LastEditors bihongbin
- * @LastEditTime 2020-11-10 18:05:47
+ * @LastEditTime 2020-12-17 17:11:40
  */
 
 import React, { useMemo } from 'react'
-import { Tooltip, Menu, Dropdown, Space } from 'antd'
+import { Tooltip, Menu, Dropdown, Space, Typography } from 'antd'
 import { queryCodeMenuObject } from '@/utils'
+import { GlobalConstant } from '@/config'
 import useMenuParams from '@/hooks/useMenuParams'
 import { SxyIcon } from '@/style/module/icon'
 
@@ -17,12 +18,13 @@ interface DropdownItemType {
   onClick: () => void
 }
 
+const { Link } = Typography
 export interface TableOperateButtonType {
   name: string
   type?: string
   authCode?: string // 权限码（用来控制权限按钮是否显示）
   onClick?: () => void
-  svg: string
+  svg?: string
   moreList?: DropdownItemType[]
 }
 
@@ -34,6 +36,7 @@ interface PropsType {
 const TableOperate = (props: PropsType) => {
   const { operateButton } = props
   const currentMenuObj = useMenuParams()
+  const authBasic = GlobalConstant.buttonPermissions.basic // 基础权限
 
   /**
    * @Description 当前页面权限菜单
@@ -51,14 +54,20 @@ const TableOperate = (props: PropsType) => {
    * @Date 2020-08-05 11:23:04
    */
   const renderButton = (item: TableOperateButtonType, index: number) => {
-    return (
-      <div
-        className="table-handle-btn-bg"
-        onClick={(event) => handleClick(event, item)}
-      >
-        <SxyIcon width={10} height={10} name={item.svg} />
-      </div>
-    )
+    if (item.svg) {
+      return (
+        <div
+          className="table-handle-btn-bg"
+          onClick={(event) => handleClick(event, item)}
+        >
+          <SxyIcon width={10} height={10} name={item.svg} />
+        </div>
+      )
+    } else {
+      return (
+        <Link onClick={(event) => handleClick(event, item)}>{item.name}</Link>
+      )
+    }
   }
 
   /**
@@ -113,7 +122,7 @@ const TableOperate = (props: PropsType) => {
     <Space size={10}>
       {buttonList.map((item, index) => (
         <Tooltip placement="top" title={item.name} key={index}>
-          {item.type === 'more' ? (
+          {item.authCode === authBasic.MORE ? (
             <Dropdown
               overlay={
                 <Menu>

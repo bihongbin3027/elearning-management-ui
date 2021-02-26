@@ -3,25 +3,26 @@
  * @Author bihongbin
  * @Date 2020-08-07 11:55:09
  * @LastEditors bihongbin
- * @LastEditTime 2020-10-29 17:22:49
+ * @LastEditTime 2021-01-28 18:04:13
  */
 
 import React, {
   useRef,
   useEffect,
-  useReducer,
   useImperativeHandle,
   forwardRef,
 } from 'react'
 import { Modal, Row, Col, Button, message } from 'antd'
 import { TableProps, ColumnType } from 'antd/es/table'
-import { AnyObjectType, PromiseAxiosResultType } from '@/typings'
 import LayoutTableList, {
   LayoutTableCallType,
   FormListCallType,
 } from '@/components/LayoutTableList'
+import useSetState from '@/hooks/useSetState'
+import { AnyObjectType, PromiseAxiosResultType } from '@/typings'
 
 export interface LayoutTableModalCallType {
+  setSavaLoading: (data: boolean) => void
   LayoutTableListRef: () => LayoutTableCallType | undefined
 }
 
@@ -35,48 +36,23 @@ export interface LayoutTableModalPropType {
     list: ColumnType<AnyObjectType>[] // 表格头数据
     tableConfig?: TableProps<any> // 自定义配置，支持antd官方表格所有参数
   }
+  autoGetList?: true // 是否开启默认查询功能
   apiMethod: (data: any) => PromiseAxiosResultType // 列表请求函数
   onCancel?: () => void // 取消或关闭弹窗
   onConfirm?: (data: AnyObjectType[]) => Promise<boolean> // 确定弹窗操作
 }
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateValue
-
-enum ActionType {
-  SET_LOADING = '[SetLoading Action]',
-  SET_SAVE_LOADING = '[SetSaveLoading Action]',
-}
-
-const stateValue = {
-  loading: false, // loading
-  saveLoading: false, // 保存按钮loading
+interface StateType {
+  autoGetList: boolean
+  saveLoading: boolean
 }
 
 const LayoutTableModal = (props: LayoutTableModalPropType, ref: any) => {
   const layoutTableRef = useRef<LayoutTableCallType>()
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_LOADING: // 设置loading状态
-        return {
-          ...state,
-          loading: action.payload,
-        }
-      case ActionType.SET_SAVE_LOADING: // 设置保存按钮loading状态
-        return {
-          ...state,
-          saveLoading: action.payload,
-        }
-      default:
-        return state
-    }
-  }, stateValue)
+  const [state, setState] = useSetState<StateType>({
+    autoGetList: false, // 是否开启默认查询功能(true是 false否)
+    saveLoading: false, // 保存按钮loading
+  })
 
   /**
    * @Description 确定
@@ -89,16 +65,14 @@ const LayoutTableModal = (props: LayoutTableModalPropType, ref: any) => {
       if (layoutTableRef.current) {
         data = layoutTableRef.current.getSelectRowsArray()
       }
-      dispatch({
-        type: ActionType.SET_SAVE_LOADING,
-        payload: true,
+      setState({
+        saveLoading: true,
       })
       props
         .onConfirm(data)
         .then((res) => {
-          dispatch({
-            type: ActionType.SET_SAVE_LOADING,
-            payload: false,
+          setState({
+            saveLoading: false,
           })
           if (res) {
             props.onCancel && props.onCancel()
@@ -111,20 +85,40 @@ const LayoutTableModal = (props: LayoutTableModalPropType, ref: any) => {
   }
 
   /**
-   * @Description 初始化
+   * @Description 开启默认查询功能
+   * @Author bihongbin
+   * @Date 2020-08-05 14:09:53
+   */
+  useEffect(() => {
+    if (props.autoGetList) {
+      setState({
+        autoGetList: props.autoGetList,
+      })
+    }
+  }, [props.autoGetList, setState])
+
+  /**
+   * @Description 初始查询
    * @Author bihongbin
    * @Date 2020-10-29 17:17:51
    */
   useEffect(() => {
-    if (props.visible && layoutTableRef.current) {
+    if (props.visible && layoutTableRef.current && state.autoGetList) {
       layoutTableRef.current.getTableList({
         updateSelected: false,
       })
     }
-  }, [props.visible])
+  }, [props.visible, state.autoGetList])
 
   // 暴漏给父组件调用
   useImperativeHandle<any, LayoutTableModalCallType>(ref, () => ({
+    // 设置保存loading
+    setSavaLoading: (data) => {
+      setState({
+        saveLoading: data,
+      })
+    },
+    // 表格实例对象方法
     LayoutTableListRef: () => layoutTableRef.current,
   }))
 
@@ -144,22 +138,16 @@ const LayoutTableModal = (props: LayoutTableModalPropType, ref: any) => {
           api={props.apiMethod}
           searchRightBtnOpen={false}
           searchFormList={props.searchFormList}
-          autoGetList
           tableColumnsList={props.tableColumnsList}
         />
       </div>
-      <Row className="mt-5 mb-5" justify="center">
+      <Row justify="center">
         <Col>
-          <Button
-            className="font-14"
-            size="large"
-            onClick={() => props.onCancel && props.onCancel()}
-          >
-            取消
+          <Button onClick={() => props.onCancel && props.onCancel()}>
+            关闭
           </Button>
           <Button
-            className="font-14 ml-5"
-            size="large"
+            className="ml-5"
             type="primary"
             loading={state.saveLoading}
             onClick={handleConfirm}
@@ -172,4 +160,4 @@ const LayoutTableModal = (props: LayoutTableModalPropType, ref: any) => {
   )
 }
 
-export default forwardRef(LayoutTableModal)
+export default React.memo(forwardRef(LayoutTableModal))

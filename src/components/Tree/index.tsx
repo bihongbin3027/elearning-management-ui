@@ -3,11 +3,10 @@
  * @Author bihongbin
  * @Date 2020-07-29 16:57:40
  * @LastEditors bihongbin
- * @LastEditTime 2020-10-26 14:33:03
+ * @LastEditTime 2021-01-20 18:21:26
  */
 
 import React, {
-  useReducer,
   useEffect,
   useCallback,
   useImperativeHandle,
@@ -16,6 +15,7 @@ import React, {
 import { Tree, Input, message, Row, Col, Modal, Empty, Spin } from 'antd'
 import _ from 'lodash'
 import { SxyIcon } from '@/style/module/icon'
+import useSetState from '@/hooks/useSetState'
 import {
   TreeNodeCallType,
   PropTypes,
@@ -26,149 +26,65 @@ import { AnyObjectType } from '@/typings'
 const { Search } = Input
 const { confirm } = Modal
 
-type ReducerType = (state: StateType, action: Action) => StateType
-
-interface Action {
-  type: ActionType
-  payload: any
-}
-
-type StateType = typeof stateNormal
-
-enum ActionType {
-  SET_LOADING = '[SetLoading Action]',
-  SET_SEARCH_OPEN = '[SetSearchOpen Action]',
-  SET_SEARCH_VALUE = '[SetSearch Action]',
-  SET_TREE_LIST = '[SetTreeList Action]',
-  SET_DRAGGABLE_OPEN = '[SetDraggableOpen Action]',
-  SET_PROCESS_OPEN = '[SetProcessOpen Action]',
-  SET_CHECKED_OPEN = '[SetCheckedOpen Action]',
-  SET_FIRST_LEVEL_COLLECTION = '[SetFirstLevelCollection Action]',
-  SET_EXPANDED_KEYS = '[SetExpandedKeys Action]',
-  SET_AUTO_EXPAND_PARENT = '[SetAutoExpandedParent Action]',
-  SET_SELECT_NODE = '[SetSelectNode Action]',
-  SET_SELECT_CURRENT = '[SetSelectCurrent Action]',
-  SET_CHECKED_NODE = '[SetCheckedNode Action]',
-  SET_CHECKED_CURRENT = '[SetCheckedCurrent Action]',
-}
-
-const stateNormal = {
-  loading: false, // 加载loading
-  searchOpen: false, // 是否打开搜索功能（默认打开）
-  searchValue: '', // 搜索值
-  treeList: [] as TreeType[], // 存放树结构数据
-  draggableOpen: false, // 是否打开节点拖拽功能（默认打开）
-  processOpen: false, // 是否打开挂起、启用、删除功能（默认打开）
-  checkedOpen: false, // 是否打开复选框功能（默认不打开）
-  firstLevelCollection: [], // 一级树结构（treeList拆分）
-  expandedKeys: [], // 指定展开的节点
-  autoExpandParent: false, // 是否自动展开父节点
-  selectNode: [], // 点击选中的节点key
-  selectCurrent: [], // 点击选中的节点数组
-  checkedNode: [], // 复选框选中的节点key
-  checkedCurrent: [], // 复选框选中的节点数组
+interface StateType {
+  loading: boolean
+  searchOpen: boolean
+  searchValue: string
+  treeList: TreeType[]
+  draggableOpen: boolean
+  processOpen: boolean
+  checkedOpen: boolean
+  firstLevelCollection: TreeType[]
+  expandedKeys: React.ReactText[]
+  autoExpandParent: boolean
+  selectNode: React.ReactText[]
+  selectCurrent: TreeType[]
+  checkedNode: string[]
+  checkedCurrent: TreeType[]
 }
 
 const TreeNode = (props: PropTypes, ref: any) => {
-  const [state, dispatch] = useReducer<ReducerType>((state, action) => {
-    switch (action.type) {
-      case ActionType.SET_LOADING: // 设置loading
-        return {
-          ...state,
-          loading: action.payload,
-        }
-      case ActionType.SET_SEARCH_OPEN: // 设置搜索功能是否打开
-        return {
-          ...state,
-          searchOpen: action.payload,
-        }
-      case ActionType.SET_SEARCH_VALUE: // 设置搜索值
-        return {
-          ...state,
-          searchValue: action.payload,
-        }
-      case ActionType.SET_TREE_LIST: // 设置树结构数据
-        return {
-          ...state,
-          treeList: action.payload,
-        }
-      case ActionType.SET_DRAGGABLE_OPEN: // 设置是否打开节点拖拽功能
-        return {
-          ...state,
-          draggableOpen: action.payload,
-        }
-      case ActionType.SET_PROCESS_OPEN: // 设置是否挂起、启用、删除功能
-        return {
-          ...state,
-          processOpen: action.payload,
-        }
-      case ActionType.SET_CHECKED_OPEN: // 设置是否打开复选框功能
-        return {
-          ...state,
-          checkedOpen: action.payload,
-        }
-      case ActionType.SET_FIRST_LEVEL_COLLECTION: // 设置一级树结构（treeList拆分）
-        return {
-          ...state,
-          firstLevelCollection: action.payload,
-        }
-      case ActionType.SET_EXPANDED_KEYS: // 设置树指定展开的节点
-        return {
-          ...state,
-          expandedKeys: action.payload,
-        }
-      case ActionType.SET_AUTO_EXPAND_PARENT: // 设置是否自动展开父节点
-        return {
-          ...state,
-          autoExpandParent: action.payload,
-        }
-      case ActionType.SET_SELECT_NODE: // 设置点击选中的节点key
-        return {
-          ...state,
-          selectNode: action.payload,
-        }
-      case ActionType.SET_SELECT_CURRENT: // 设置点击选中的节点数组
-        return {
-          ...state,
-          selectCurrent: action.payload,
-        }
-      case ActionType.SET_CHECKED_NODE: //设置复选框选中的节点key
-        return {
-          ...state,
-          checkedNode: action.payload,
-        }
-      case ActionType.SET_CHECKED_CURRENT: //设置复选框选中的节点数组
-        return {
-          ...state,
-          checkedCurrent: action.payload,
-        }
-      default:
-        return state
-    }
-  }, stateNormal)
+  const [state, setState] = useSetState<StateType>({
+    loading: false, // 加载loading
+    searchOpen: false, // 是否打开搜索功能（默认打开）
+    searchValue: '', // 搜索值
+    treeList: [], // 存放树结构数据
+    draggableOpen: false, // 是否打开节点拖拽功能（默认打开）
+    processOpen: false, // 是否打开挂起、启用、删除功能（默认打开）
+    checkedOpen: false, // 是否打开复选框功能（默认不打开）
+    firstLevelCollection: [], // 一级树结构（treeList拆分）
+    expandedKeys: [], // 指定展开的节点
+    autoExpandParent: false, // 是否自动展开父节点
+    selectNode: [], // 点击选中的节点key
+    selectCurrent: [], // 点击选中的节点数组
+    checkedNode: [], // 复选框选中的节点key
+    checkedCurrent: [], // 复选框选中的节点数组
+  })
 
   /**
    * @Description 一级树结构（treeList拆分）
    * @Author bihongbin
    * @Date 2020-07-30 14:20:54
    */
-  const generateList = useCallback((data: TreeType[]): void => {
-    const arr: TreeType[] = []
-    const eachData = (_data: TreeType[]) => {
-      for (let i = 0; i < _data.length; i++) {
-        const node = _data[i]
-        arr.push(_data[i])
-        if (node.children) {
-          eachData(node.children)
+  const generateList = useCallback(
+    (data: TreeType[]): void => {
+      const arr: TreeType[] = []
+      const eachData = (_data: TreeType[]) => {
+        for (let i = 0; i < _data.length; i++) {
+          const node = _data[i]
+          arr.push(_data[i])
+          if (node.children) {
+            eachData(node.children)
+          }
         }
       }
-    }
-    eachData(data)
-    dispatch({
-      type: ActionType.SET_FIRST_LEVEL_COLLECTION,
-      payload: arr,
-    })
-  }, [])
+      eachData(data)
+      setState({
+        firstLevelCollection: arr,
+      })
+    },
+    [setState],
+  )
 
   /**
    * @Description 拖拽触发时调用
@@ -246,9 +162,8 @@ const TreeNode = (props: PropTypes, ref: any) => {
     if (props.onDropCallBack) {
       props.onDropCallBack(info, data)
     }
-    dispatch({
-      type: ActionType.SET_TREE_LIST,
-      payload: data,
+    setState({
+      treeList: data,
     })
   }
 
@@ -261,16 +176,15 @@ const TreeNode = (props: PropTypes, ref: any) => {
     (selectedKeys: React.Key[], e: AnyObjectType): void => {
       if (_.isArray(selectedKeys)) {
         // 设置当前点击选中的节点key
-        dispatch({
-          type: ActionType.SET_SELECT_NODE,
-          payload: selectedKeys,
+        setState({
+          selectNode: selectedKeys,
         })
         if (props.onSelect) {
           props.onSelect(selectedKeys, e)
         }
       }
     },
-    [props],
+    [props, setState],
   )
 
   /**
@@ -280,18 +194,12 @@ const TreeNode = (props: PropTypes, ref: any) => {
    */
   const handleExpandTreeNode = useCallback(
     (expandedKeys: React.Key[]): void => {
-      // 设置树不展开
-      dispatch({
-        type: ActionType.SET_AUTO_EXPAND_PARENT,
-        payload: false,
-      })
-      // 设置树需要展开的节点
-      dispatch({
-        type: ActionType.SET_EXPANDED_KEYS,
-        payload: expandedKeys,
+      setState({
+        autoExpandParent: false, // 设置树不展开
+        expandedKeys: expandedKeys, // 设置树需要展开的节点
       })
     },
-    [],
+    [setState],
   )
 
   /**
@@ -333,23 +241,13 @@ const TreeNode = (props: PropTypes, ref: any) => {
           return null
         })
         .filter((item, i, self) => item && self.indexOf(item) === i)
-      // 设置搜索的值
-      dispatch({
-        type: ActionType.SET_SEARCH_VALUE,
-        payload: value,
-      })
-      // 设置树需要展开的节点
-      dispatch({
-        type: ActionType.SET_EXPANDED_KEYS,
-        payload: _expandedKeys,
-      })
-      // 设置树自动展开
-      dispatch({
-        type: ActionType.SET_AUTO_EXPAND_PARENT,
-        payload: true,
+      setState({
+        searchValue: value, // 设置搜索的值
+        expandedKeys: _expandedKeys as React.ReactText[], // 设置树需要展开的节点
+        autoExpandParent: true, // 设置树自动展开
       })
     },
-    [getParentKey, state.firstLevelCollection, state.treeList],
+    [getParentKey, setState, state.firstLevelCollection, state.treeList],
   )
 
   /**
@@ -373,9 +271,9 @@ const TreeNode = (props: PropTypes, ref: any) => {
                   ids: [item.id],
                   type: 'pending',
                 })
-                props.updateCallBack && props.updateCallBack() // 回调
+                props.updateCallBack && props.updateCallBack({ type: 'hang' }) // 回调
                 message.success('挂起成功', 1.5)
-                resolve()
+                resolve(true)
               }
             } catch (error) {
               reject(new Error('挂起失败'))
@@ -408,9 +306,9 @@ const TreeNode = (props: PropTypes, ref: any) => {
                   ids: [item.id],
                   type: 'recover',
                 })
-                props.updateCallBack && props.updateCallBack() // 回调
+                props.updateCallBack && props.updateCallBack({ type: 'enable' }) // 回调
                 message.success('启用成功', 1.5)
-                resolve()
+                resolve(true)
               }
             } catch (error) {
               reject(new Error('启用失败'))
@@ -448,9 +346,9 @@ const TreeNode = (props: PropTypes, ref: any) => {
             try {
               if (props.deleteApi && item.id) {
                 await props.deleteApi([item.id])
-                props.updateCallBack && props.updateCallBack() // 回调
+                props.updateCallBack && props.updateCallBack({ type: 'delete' }) // 回调
                 message.success('删除成功', 1.5)
-                resolve()
+                resolve(true)
               }
             } catch (error) {
               reject(new Error('删除失败'))
@@ -467,13 +365,15 @@ const TreeNode = (props: PropTypes, ref: any) => {
    * @Author bihongbin
    * @Date 2020-07-31 09:14:36
    */
-  const handleCheckNode = useCallback((checked) => {
-    // 设置复选框选中的key
-    dispatch({
-      type: ActionType.SET_CHECKED_NODE,
-      payload: checked.checked || checked,
-    })
-  }, [])
+  const handleCheckNode = useCallback(
+    (checked) => {
+      // 设置复选框选中的key
+      setState({
+        checkedNode: checked.checked || checked,
+      })
+    },
+    [setState],
+  )
 
   /**
    * @Description 渲染最终树结构
@@ -485,11 +385,11 @@ const TreeNode = (props: PropTypes, ref: any) => {
       return data.map((item) => {
         const t = item.title as string
         const index = t.indexOf(state.searchValue)
-        const beforeStr = t.substr(0, index)
-        const afterStr = t.substr(index + state.searchValue.length)
+        const beforeStr = t.substr(0, index) // 用来区分搜索结果的数据
+        const afterStr = t.substr(index + state.searchValue.length) // 用来区分搜索结果的数据
         const handleHtml = (
           <>
-            {item.status === 1 ? (
+            {item.status === 1 && props.lockApi ? (
               <SxyIcon
                 width={20}
                 height={20}
@@ -501,7 +401,7 @@ const TreeNode = (props: PropTypes, ref: any) => {
                 }}
               />
             ) : null}
-            {item.status === 2 ? (
+            {item.status === 2 && props.unLockApi ? (
               <SxyIcon
                 width={20}
                 height={20}
@@ -513,18 +413,23 @@ const TreeNode = (props: PropTypes, ref: any) => {
                 }}
               />
             ) : null}
-            <SxyIcon
-              width={20}
-              height={20}
-              name="icon_list_delete.png"
-              title="删除"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDelete(item)
-              }}
-            />
+            {props.deleteApi ? (
+              <SxyIcon
+                width={20}
+                height={20}
+                name="icon_list_delete.png"
+                title="删除"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDelete(item)
+                }}
+              />
+            ) : null}
           </>
         )
+        // 是否显示右侧操作按钮
+        const isRightButton =
+          props.processOpen && !item.processOpen && !item.disabled
         const title =
           index > -1 ? (
             <Row justify="space-between" align="middle">
@@ -533,14 +438,14 @@ const TreeNode = (props: PropTypes, ref: any) => {
                 <span className="text-error">{state.searchValue}</span>
                 {afterStr}
               </Col>
-              {props.processOpen && !item.processOpen ? (
+              {isRightButton ? (
                 <Col className="tree-handle-box">{handleHtml}</Col>
               ) : null}
             </Row>
           ) : (
             <Row justify="space-between" align="middle">
               <Col>{item.title}</Col>
-              {props.processOpen && !item.processOpen ? (
+              {isRightButton ? (
                 <Col className="tree-handle-box">{handleHtml}</Col>
               ) : null}
             </Row>
@@ -562,7 +467,10 @@ const TreeNode = (props: PropTypes, ref: any) => {
       handleDelete,
       handleLock,
       handleUnLock,
+      props.deleteApi,
+      props.lockApi,
       props.processOpen,
+      props.unLockApi,
       state.searchValue,
     ],
   )
@@ -588,11 +496,10 @@ const TreeNode = (props: PropTypes, ref: any) => {
       getDeep(data)
       return arr
     }
-    dispatch({
-      type: ActionType.SET_CHECKED_CURRENT,
-      payload: deep(state.treeList),
+    setState({
+      checkedCurrent: deep(state.treeList),
     })
-  }, [state.checkedNode, state.treeList])
+  }, [setState, state.checkedNode, state.treeList])
 
   /**
    * @Description 点击选中节点更新的时候(selectNode)，同步到点击选中的数组(selectCurrent)
@@ -615,11 +522,10 @@ const TreeNode = (props: PropTypes, ref: any) => {
       getDeep(data)
       return arr
     }
-    dispatch({
-      type: ActionType.SET_SELECT_CURRENT,
-      payload: deep(state.treeList),
+    setState({
+      selectCurrent: deep(state.treeList),
     })
-  }, [state.selectNode, state.treeList])
+  }, [setState, state.selectNode, state.treeList])
 
   /**
    * @Description 暴漏组件方法给父级
@@ -629,9 +535,8 @@ const TreeNode = (props: PropTypes, ref: any) => {
   useImperativeHandle<any, TreeNodeCallType>(ref, () => ({
     // 设置loading
     setLoading: (data) => {
-      dispatch({
-        type: ActionType.SET_LOADING,
-        payload: data,
+      setState({
+        loading: data,
       })
     },
     // 获取当前点击选中的节点key
@@ -644,16 +549,14 @@ const TreeNode = (props: PropTypes, ref: any) => {
     getCheckedCurrent: () => state.checkedCurrent,
     // 设置当前点击选中的节点
     setSelectNode: (data) => {
-      dispatch({
-        type: ActionType.SET_SELECT_NODE,
-        payload: data,
+      setState({
+        selectNode: data,
       })
     },
     // 设置复选框选中的节点
     setCheckedNode: (data) => {
-      dispatch({
-        type: ActionType.SET_CHECKED_NODE,
-        payload: data,
+      setState({
+        checkedNode: data,
       })
     },
   }))
@@ -666,14 +569,13 @@ const TreeNode = (props: PropTypes, ref: any) => {
   useEffect(() => {
     if (_.isArray(props.data)) {
       // 设置树结构数据
-      dispatch({
-        type: ActionType.SET_TREE_LIST,
-        payload: props.data,
+      setState({
+        treeList: props.data,
       })
       // 一级树结构（treeList拆分）
       generateList(props.data)
     }
-  }, [generateList, props.data])
+  }, [generateList, props.data, setState])
 
   /**
    * @Description 打开或关闭一些默认功能
@@ -681,46 +583,39 @@ const TreeNode = (props: PropTypes, ref: any) => {
    * @Date 2020-07-31 15:57:57
    */
   useEffect(() => {
+    let data: AnyObjectType = {}
     // 打开搜索功能
     if (props.searchOpen) {
-      dispatch({
-        type: ActionType.SET_SEARCH_OPEN,
-        payload: props.searchOpen,
-      })
+      data.searchOpen = props.searchOpen
     }
     // 打开拖拽功能
     if (props.draggableOpen) {
-      dispatch({
-        type: ActionType.SET_DRAGGABLE_OPEN,
-        payload: props.draggableOpen,
-      })
+      data.draggableOpen = props.draggableOpen
     }
     // 打开挂起、恢复、删除功能
     if (props.processOpen) {
-      dispatch({
-        type: ActionType.SET_PROCESS_OPEN,
-        payload: props.processOpen,
-      })
+      data.processOpen = props.processOpen
     }
     // 打开复选框功能
     if (props.checkedOpen) {
-      dispatch({
-        type: ActionType.SET_CHECKED_OPEN,
-        payload: props.checkedOpen,
-      })
+      data.checkedOpen = props.checkedOpen
+    }
+    if (Object.keys(data).length) {
+      setState(data)
     }
   }, [
     props.checkedOpen,
     props.draggableOpen,
     props.processOpen,
     props.searchOpen,
+    setState,
   ])
 
   return (
     <Spin spinning={state.loading}>
       {state.searchOpen ? (
         <Search
-          className="mb-5"
+          className="mb-4"
           placeholder="输入名称搜索"
           onChange={searchChange}
         />
@@ -742,9 +637,8 @@ const TreeNode = (props: PropTypes, ref: any) => {
           draggable={state.draggableOpen}
           onDrop={handleDrop}
           onDragEnter={(info) => {
-            dispatch({
-              type: ActionType.SET_EXPANDED_KEYS,
-              payload: info.expandedKeys,
+            setState({
+              expandedKeys: info.expandedKeys,
             })
           }}
           {...props.treeConfig}
@@ -756,4 +650,4 @@ const TreeNode = (props: PropTypes, ref: any) => {
   )
 }
 
-export default forwardRef(TreeNode)
+export default React.memo(forwardRef(TreeNode))

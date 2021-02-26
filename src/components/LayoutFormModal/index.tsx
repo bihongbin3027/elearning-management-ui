@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-08-01 15:13:11
  * @LastEditors bihongbin
- * @LastEditTime 2020-11-12 18:38:43
+ * @LastEditTime 2021-02-25 14:45:20
  */
 
 import React, {
@@ -28,7 +28,7 @@ export interface LayoutFormPropTypes {
   visible: boolean // 打开或关闭
   disable?: boolean // 表单是否禁用
   id?: string | null | undefined
-  title: string | null | undefined // 弹窗标题
+  title: string | React.ReactNode | null | undefined // 弹窗标题
   width?: number // 弹窗宽度
   topRender?: React.ReactElement // 表单弹窗头部显示的额外dom元素
   submitRemoveField?: string[] // 提交表单需要移除的参数
@@ -40,6 +40,7 @@ export interface LayoutFormPropTypes {
   formList: FormListType[] // 表单数据
   formConfig?: FormProps // 支持antd Form组件官方传参所有类型
   children?: React.ReactNode // 组件子元素插槽
+  footer?: React.ReactNode // 底部操作按钮自定义
 }
 
 // 导出该组件可调用的方法类型
@@ -47,7 +48,9 @@ export interface LayoutFormModalCallType {
   setFormLoading: (data: boolean) => void
   setFormSaveLoading: (data: boolean) => void
   setFormFields: (fields: FieldData[]) => void
+  getFormValues: (data: string[]) => AnyObjectType | undefined
   setFormValues: (values: AnyObjectType) => void
+  getFormSubmitValues: () => Promise<AnyObjectType | undefined>
 }
 
 export type LayoutFormModalListType = FormListType
@@ -128,7 +131,6 @@ const LayoutFormModal = (props: LayoutFormPropTypes, ref: any) => {
       handleSaveLoadingState(true)
       try {
         let result: AnyObjectType = {}
-        let msg: string
         // 合并父组件传过来的额外参数
         formParams = {
           ...formParams,
@@ -153,22 +155,26 @@ const LayoutFormModal = (props: LayoutFormPropTypes, ref: any) => {
           }
         }
         formParams = _.omitBy(formParams, _.isNil)
-        console.log('表单提交参数：', JSON.stringify(formParams))
+        // 时间格式转换
+        for (let o in formParams) {
+          const formatStr = 'YYYY-MM-DD HH:mm:ss'
+          if (moment(formParams[o], formatStr, true).isValid()) {
+            formParams[o] = moment(formParams[o]).format(formatStr)
+          }
+        }
         if (props.submitApi) {
           if (props.id) {
             formParams.id = props.id
-            msg = '修改成功'
             result = await props.submitApi(formParams, 'put')
           } else {
-            msg = '新增成功'
             result = await props.submitApi(formParams, 'post')
           }
-          if (result.data) {
+          if (result.code === 1) {
             // 确定或保存回调
             if (props.onConfirm) {
               props.onConfirm(result)
             }
-            message.success(msg, 1.5)
+            message.success('操作成功', 1.5)
             props.onCancel && props.onCancel()
           }
           handleSaveLoadingState(false)
@@ -219,10 +225,20 @@ const LayoutFormModal = (props: LayoutFormPropTypes, ref: any) => {
         formRef.current.formSetFields(fields)
       }
     },
+    // 读取表单值
+    getFormValues: (data) => {
+      return formRef.current?.formGetValues(data)
+    },
     // 设置表单值
     setFormValues: (data) => {
       if (formRef.current) {
         formRef.current.formSetValues(data)
+      }
+    },
+    // 获取表单提交的值
+    getFormSubmitValues: async () => {
+      if (formRef.current) {
+        return await formRef.current?.formSubmit()
       }
     },
   }))
@@ -243,44 +259,42 @@ const LayoutFormModal = (props: LayoutFormPropTypes, ref: any) => {
             {props.topRender ? props.topRender : null}
             <GenerateForm
               ref={formRef}
-              className="form-ash-theme form-large-font14"
+              className="form-ash-theme"
               formConfig={{
-                size: 'large',
                 labelCol: { span: 24 },
                 ...props.formConfig,
               }}
-              rowGridConfig={{ gutter: [40, 0] }}
+              rowGridConfig={{ gutter: [20, 0] }}
               colGirdConfig={{ span: 12 }}
               list={props.formList}
             />
             {props.children && props.children}
           </div>
-          <Row className="mt-10 mb-5" justify="center">
-            <Col>
-              <Button
-                className="font-14"
-                size="large"
-                onClick={() => props.onCancel && props.onCancel()}
-              >
-                取消
-              </Button>
-              {!state.disabled && (
-                <Button
-                  className="font-14 ml-5"
-                  size="large"
-                  type="primary"
-                  loading={state.saveLoading}
-                  onClick={formSubmit}
-                >
-                  提交
+          {props.footer ? (
+            props.footer
+          ) : (
+            <Row className="mt-5 mb-2" justify="center">
+              <Col>
+                <Button onClick={() => props.onCancel && props.onCancel()}>
+                  关闭
                 </Button>
-              )}
-            </Col>
-          </Row>
+                {!state.disabled && (
+                  <Button
+                    className="ml-5"
+                    type="primary"
+                    loading={state.saveLoading}
+                    onClick={formSubmit}
+                  >
+                    提交
+                  </Button>
+                )}
+              </Col>
+            </Row>
+          )}
         </Spin>
       </Modal>
     </>
   )
 }
 
-export default forwardRef(LayoutFormModal)
+export default React.memo(forwardRef(LayoutFormModal))

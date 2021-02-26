@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-07-31 09:53:54
  * @LastEditors bihongbin
- * @LastEditTime 2020-11-10 18:14:49
+ * @LastEditTime 2021-02-25 14:45:55
  */
 
 import React, {
@@ -32,7 +32,7 @@ import { SxyButton, SxyButtonIconGroup } from '@/style/module/button'
 import { SxyIcon } from '@/style/module/icon'
 
 export type LayoutTableCallType = TableCallType &
-  Pick<FormCallType, 'formSetValues'> // 暴漏方法给父组件的类型
+  Pick<FormCallType, 'formSetValues' | 'formGetValues'> // 暴漏方法给父组件的类型
 export type FormFuncCallType = FormCallType // 表单可使用的方法类型
 export type FormListCallType = FormListType // 表单list数据类型
 
@@ -58,6 +58,11 @@ interface RenderType {
   size?: SizeType
 }
 
+interface searchFormDateTransformType {
+  name: string // 需要转换的默认参数
+  format?: string // 转换的格式（默认为：YYYY-MM-DD）
+  transform: [string, string?] // 最终转换的参数
+}
 export interface LayoutTableListProp {
   api?: (data: any) => PromiseAxiosResultType // 数据来源接口
   data?: AnyObjectType[] // 列表数据
@@ -68,11 +73,9 @@ export interface LayoutTableListProp {
   searchFormList?: FormListType[] // 搜索表单数据
   searchFormListSize?: SizeType
   // 时间类型格式转换
-  searchFormDateTransform?: {
-    name: string // 需要转换的默认参数
-    format?: string // 转换的格式（默认为：YYYY-MM-DD）
-    transform: [string, string?] // 最终转换的参数
-  }
+  searchFormDateTransform?:
+    | searchFormDateTransformType
+    | searchFormDateTransformType[]
   searchExtraParameters?: AnyObjectType // 查询的额外参数
   searchCallback?: (data: any) => void // 查询回调
   searchRightBtnOpen?: boolean // 是否显示头部搜索右侧刷新和筛选按钮
@@ -205,9 +208,8 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
           ...result,
           ...props.searchExtraParameters,
         }
-        // 开始时间和结束时间的格式转换
-        if (props.searchFormDateTransform) {
-          const { name, transform, format } = props.searchFormDateTransform
+        const formatTransform = (data: searchFormDateTransformType) => {
+          const { name, transform, format } = data
           if (result[name]) {
             const formatStr = format ? format : 'YYYY-MM-DD'
             let startTime = moment(result[name][0]).format(formatStr)
@@ -222,6 +224,33 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
                 result[transform[1]] = endTime
               }
             }
+          } else {
+            if (transform && transform.length) {
+              for (let item of transform) {
+                if (item) {
+                  result[item] = undefined
+                }
+              }
+            }
+          }
+        }
+        // 开始时间和结束时间的格式转换（对象）
+        if (_.isObject(props.searchFormDateTransform)) {
+          formatTransform(
+            props.searchFormDateTransform as searchFormDateTransformType,
+          )
+        }
+        // 开始时间和结束时间的格式转换（数组）
+        if (_.isArray(props.searchFormDateTransform)) {
+          for (let trans of props.searchFormDateTransform) {
+            formatTransform(trans)
+          }
+        }
+        // 时间格式转换
+        for (let o in result) {
+          const formatStr = 'YYYY-MM-DD HH:mm:ss'
+          if (moment(result[o], formatStr, true).isValid()) {
+            result[o] = moment(result[o]).format(formatStr)
           }
         }
         tableRef.current.getTableList(result, () => {
@@ -310,6 +339,13 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
         tableRef.current.getTableList(values, callback)
       }
     },
+    // 获取表单值
+    formGetValues: (data) => {
+      if (searchForm.current) {
+        return searchForm.current.formGetValues(data)
+      }
+      return {}
+    },
     // 设置表单值
     formSetValues: (values) => {
       if (searchForm.current) {
@@ -341,7 +377,7 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
 
   return (
     <>
-      <Row justify="space-between" gutter={20}>
+      <Row justify="space-between" gutter={16}>
         <Col span={21}>
           <div
             style={{
@@ -391,7 +427,7 @@ const LayoutTableList = (props: LayoutTableListProp, ref: any) => {
           </Col>
         ) : null}
       </Row>
-      <Row gutter={20}>
+      <Row gutter={16}>
         {leftRender ? <Col {...leftRender.size}>{leftRender.jsx}</Col> : null}
         <Col {...state.tableWidth}>
           {props.middleEmpty ? (

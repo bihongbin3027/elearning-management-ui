@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-06-24 13:59:28
  * @LastEditors bihongbin
- * @LastEditTime 2020-11-12 16:09:17
+ * @LastEditTime 2021-01-28 17:44:40
  */
 
 import React, {
@@ -17,12 +17,23 @@ import React, {
   useContext,
 } from 'react'
 import _ from 'lodash'
-import { Table, Form, Input } from 'antd'
+import { v4 as uuidV4 } from 'uuid'
+import moment from 'moment'
+import { Table, Form, Input, Select, DatePicker, Spin } from 'antd'
 import { TablePaginationConfig, TableProps, ColumnType } from 'antd/es/table'
+import { Rule } from 'rc-field-form/lib/interface'
 import ResizableTitle from './ResizableTitle'
-import { AnyObjectType, PromiseAxiosResultType } from '@/typings'
+import { SelectType, AnyObjectType, PromiseAxiosResultType } from '@/typings'
 
+const { Option } = Select
 const EditableContext = React.createContext<any>(null)
+
+type remoteValueType = string | undefined
+type remotePromiseType = (value: remoteValueType) => Promise<SelectType[]>
+
+// 导出表格头类型
+export type TableColumns<T = AnyObjectType> = ColumnType<T> &
+  Partial<EditableColumnsType>
 
 // 导出该组件可调用的方法类型
 export interface TableCallType {
@@ -35,8 +46,8 @@ export interface TableCallType {
 }
 
 type ScrollXYType = {
-  x?: number | true
-  y?: number
+  x?: string | number | true | undefined
+  y?: string | number | undefined
 }
 
 // 组件传参配置
@@ -49,16 +60,38 @@ interface GenerateTableProp {
   data?: AnyObjectType[] // 列表数据
   onSelect?: (selectedRows: AnyObjectType[], selectedRowKeys: any[]) => void // 行选中回调
   paginationConfig?: false | TablePaginationConfig // 控制分页格式
+  getCheckboxProps?: (record: AnyObjectType) => AnyObjectType // 选择框的默认属性配置
 }
 
-interface EditableRowProps {
-  index: number
+interface EditableColumnsType {
+  editable: boolean
+  inputType: 'number'
+  valueType: 'Select' | 'DatePicker' | 'RemoteSearch' // 单元格表单类型
+  valueEnum: SelectType[]
+  formChange: (record: AnyObjectType) => AnyObjectType // 表单值改变触发
+  remoteConfig: {
+    remoteApi: remotePromiseType // 远程搜索的api
+    remoteMode?: 'multiple' | 'tags' // 远程搜索模式为多选或标签
+  }
+  formItemProps: {
+    rules: Rule[]
+  }
 }
 
-const EditableRow: React.FC<EditableRowProps> = ({ index, ...props }) => {
+type EditableCellProps = {
+  title: React.ReactNode
+  children: React.ReactNode
+  dataIndex: string
+  record: AnyObjectType
+  handleSave: (record: AnyObjectType) => void
+} & EditableColumnsType
+
+const EditableRow: React.FC = (props, func) => {
   const [form] = Form.useForm()
+  const [uuId] = useState(uuidV4())
+
   return (
-    <Form form={form} component={false}>
+    <Form name={uuId} form={form} component={false}>
       <EditableContext.Provider value={form}>
         <tr {...props} />
       </EditableContext.Provider>
@@ -66,72 +99,170 @@ const EditableRow: React.FC<EditableRowProps> = ({ index, ...props }) => {
   )
 }
 
-interface EditableCellProps {
-  title: React.ReactNode
-  editable: boolean
-  children: React.ReactNode
-  dataIndex: string
-  record: AnyObjectType
-  handleSave: (record: AnyObjectType) => void
-}
-
 const EditableCell: React.FC<EditableCellProps> = ({
   title,
   editable,
+  inputType,
+  valueType,
+  valueEnum,
+  formChange,
+  remoteConfig,
+  formItemProps,
   children,
   dataIndex,
   record,
   handleSave,
   ...restProps
 }) => {
-  const [editing, setEditing] = useState(false)
   const inputRef = useRef<any>()
   const form = useContext(EditableContext)
+  // 远程搜索loading
+  const [remoteFetching, setRemoteFetching] = useState(false)
+  // 远程搜索数据结果
+  const [remoteData, setRemoteData] = useState<{ [key: string]: SelectType[] }>(
+    {},
+  )
 
-  useEffect(() => {
-    if (editing) {
-      inputRef.current?.focus()
+  /**
+   * @Description 远程数据搜索
+   * @Author bihongbin
+   * @Date 2021-01-05 11:14:45
+   */
+  const fetchRemote = (
+    value: remoteValueType,
+    fieldName: string | undefined,
+    remoteApi?: remotePromiseType,
+  ) => {
+    if (remoteApi) {
+      setRemoteFetching(true)
+      remoteApi(value).then((res) => {
+        setRemoteFetching(false)
+        if (fieldName) {
+          setRemoteData({
+            [fieldName]: res,
+          })
+        }
+      })
     }
-  }, [editing])
-  const toggleEdit = () => {
-    setEditing(!editing)
-    form.setFieldsValue({ [dataIndex]: record[dataIndex] })
   }
-  const save = async (e: any) => {
+
+  // 如果是表单表格项，初始化数据赋值
+  if (editable) {
+    let val = record[dataIndex]
+    // 如果是时间类型，转换
+    if (moment(val, 'YYYY-MM-DD', true).isValid()) {
+      val = moment(val)
+    }
+    setTimeout(() => {
+      form.setFieldsValue({
+        [dataIndex]: val,
+      })
+    })
+  }
+
+  // 显示不同类型的表单
+  const filterFormType = (
+    type: EditableCellProps['valueType'],
+    title: string,
+  ) => {
+    let node = null
+    switch (type) {
+      case 'Select':
+        node = (
+          <Select ref={inputRef} onSelect={save} placeholder={title}>
+            {_.isArray(valueEnum)
+              ? valueEnum.map((m, i) => (
+                  <Option key={i} value={m.value}>
+                    {m.label}
+                  </Option>
+                ))
+              : null}
+          </Select>
+        )
+        break
+      case 'DatePicker':
+        node = <DatePicker ref={inputRef} onChange={save} placeholder={title} />
+        break
+      case 'RemoteSearch':
+        node = (
+          <Select
+            mode={remoteConfig.remoteMode}
+            placeholder={title}
+            notFoundContent={remoteFetching ? <Spin size="small" /> : null}
+            filterOption={false}
+            allowClear
+            showSearch
+            // 当获取焦点查询全部
+            onFocus={() =>
+              fetchRemote(undefined, dataIndex, remoteConfig.remoteApi)
+            }
+            onSearch={(value) =>
+              fetchRemote(value, dataIndex, remoteConfig.remoteApi)
+            }
+          >
+            {dataIndex && remoteData[dataIndex]
+              ? remoteData[dataIndex].map((s: SelectType, k) => (
+                  <Option value={s.value} key={k}>
+                    {s.label}
+                  </Option>
+                ))
+              : null}
+          </Select>
+        )
+        break
+      default:
+        node = (
+          <Input
+            ref={inputRef}
+            onPressEnter={save}
+            onBlur={save}
+            placeholder={title}
+            type={inputType ? inputType : 'text'}
+          />
+        )
+        break
+    }
+    return node
+  }
+
+  // 更新值到record
+  const save = async () => {
     try {
       const values = await form.validateFields()
-      toggleEdit()
-      handleSave({ ...record, ...values })
+      let data = { ...record, ...values }
+      for (let i in data) {
+        // 如果是时间类型，转换
+        if (moment.isMoment(data[i])) {
+          data[i] = moment(data[i]).format('YYYY-MM-DD')
+        }
+      }
+      if (formChange) {
+        data = formChange(data) // 单元格值改变触发
+      }
+      handleSave(data)
     } catch (errInfo) {
-      console.log('Save failed:', errInfo)
+      console.log('保存表单字段失败:', errInfo)
     }
   }
+
   let childNode = children
   if (editable) {
-    childNode = editing ? (
+    childNode = (
       <Form.Item
         style={{ margin: 0 }}
         name={dataIndex}
-        // rules={[
-        //   {
-        //     required: true,
-        //     message: `请输入${title}`,
-        //   },
-        // ]}
+        rules={formItemProps ? formItemProps.rules : undefined}
       >
-        <Input ref={inputRef} onPressEnter={save} onBlur={save} />
+        {filterFormType(valueType, title as string)}
       </Form.Item>
-    ) : (
-      <div
-        className="editable-cell-value-wrap"
-        style={{ paddingRight: 24 }}
-        onClick={toggleEdit}
-      >
-        {children}
-      </div>
     )
   }
-  return <td {...restProps}>{childNode}</td>
+
+  return (
+    <td {...restProps} title={title as string}>
+      {childNode}
+    </td>
+  )
 }
 
 const GenerateTable = (props: GenerateTableProp, ref: any) => {
@@ -148,8 +279,11 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
   const [listData, setListData] = useState<any[]>([]) // 列表数据
   const [selectRowIds, setSelectRowIds] = useState<string[]>([]) // 表格选中行的ids
   const [selectRowArray, setSelectRowArray] = useState<AnyObjectType[]>([]) // 表格选中行的所有数组
-  // 固定列
-  const [scrollXY, setScrollXY] = useState<ScrollXYType>({})
+  // 表格横向纵向滚动条
+  const [scrollXY, setScrollXY] = useState<ScrollXYType>({
+    x: 'max-content',
+    y: 500,
+  })
 
   /**
    * @Description 获取表格数据 values包含{ updateSelected: false }时，不会更新复选框和单选选中的值
@@ -185,21 +319,35 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
           delete queryParams.current
           const result = await apiMethod(_.pickBy(queryParams, _.identity))
           queryPagination.current.total = result.data.total
-
           // 更新表格选中的数据id
           if (_.isArray(result.data.content)) {
             if (updateSelected) {
-              let ids: string[] = []
-              result.data.content.forEach((data: AnyObjectType) => {
+              let rowIds: string[] = []
+              // 递归
+              const deepTable = (list: AnyObjectType[]) => {
                 if (selectRowIds.length) {
-                  selectRowIds.forEach((row) => {
-                    if (data.id === row) {
-                      ids.push(row)
+                  for (let item of list) {
+                    for (let ids of selectRowIds) {
+                      if (tableConfig && tableConfig.rowKey) {
+                        if (typeof tableConfig.rowKey === 'string') {
+                          if (item[tableConfig.rowKey] === ids) {
+                            rowIds.push(ids)
+                          }
+                        }
+                      } else {
+                        if (item.id === ids) {
+                          rowIds.push(ids)
+                        }
+                      }
                     }
-                  })
+                    if (item.children) {
+                      deepTable(item.children)
+                    }
+                  }
                 }
-              })
-              setSelectRowIds(ids)
+              }
+              deepTable(result.data.content)
+              setSelectRowIds(rowIds)
             }
             setListData(result.data.content)
           }
@@ -207,7 +355,7 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
       } catch (error) {}
       setListLoading(false)
     },
-    [apiMethod, selectRowIds],
+    [apiMethod, selectRowIds, tableConfig],
   )
 
   /**
@@ -230,6 +378,7 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
       fixed: true,
       type: rowType,
       selectedRowKeys: selectRowIds,
+      getCheckboxProps: props.getCheckboxProps,
       onChange(selectedRowKeys: any[], selectedRows: AnyObjectType[]) {
         setSelectRowIds(selectedRowKeys)
         setSelectRowArray(selectedRows)
@@ -293,6 +442,12 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
         obj.onCell = (record: AnyObjectType) => ({
           record,
           editable: col.editable,
+          inputType: col.inputType,
+          valueType: col.valueType,
+          valueEnum: col.valueEnum,
+          formChange: col.formChange,
+          remoteConfig: col.remoteConfig,
+          formItemProps: col.formItemProps,
           dataIndex: col.dataIndex,
           title: col.title,
           handleSave: handleSave,
@@ -310,15 +465,30 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
    */
   useEffect(() => {
     let rows: AnyObjectType[] = []
-    for (let item of listData) {
-      for (let ids of selectRowIds) {
-        if (item.id === ids) {
-          rows.push(item)
+    // 递归
+    const deepTable = (list: AnyObjectType[]) => {
+      for (let item of list) {
+        for (let ids of selectRowIds) {
+          if (tableConfig && tableConfig.rowKey) {
+            if (typeof tableConfig.rowKey === 'string') {
+              if (item[tableConfig.rowKey] === ids) {
+                rows.push(item)
+              }
+            }
+          } else {
+            if (item.id === ids) {
+              rows.push(item)
+            }
+          }
+        }
+        if (item.children) {
+          deepTable(item.children)
         }
       }
     }
+    deepTable(listData)
     setSelectRowArray(rows)
-  }, [listData, selectRowIds])
+  }, [listData, selectRowIds, tableConfig])
 
   /**
    * @Description 设置静态表格数据
@@ -339,8 +509,6 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
   useEffect(() => {
     if (scroll?.x || scroll?.y) {
       setScrollXY((prev) => ({ ...prev, ...scroll }))
-    } else {
-      setScrollXY({ x: undefined, y: undefined })
     }
   }, [listData, scroll])
 
@@ -355,22 +523,33 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
       setSelectRowIds(selectedRowKeys)
     },
     // 调用接口获取表格数据
-    getTableList: (values, callback) => {
+    getTableList: async (values, callback) => {
       // 重置分页
       if (values) {
         values.current = 1
       }
-      getList(values)
+      await getList(values)
       // 查询回调
       if (callback) {
         callback()
       }
     },
-    // 表格选中ids
-    getSelectIds: () => selectRowIds,
-    // 表格选中的所有数组
+    // 表格选中的id
+    getSelectIds: () =>
+      selectRowArray.map((item) => {
+        if (tableConfig && tableConfig.rowKey) {
+          if (typeof tableConfig.rowKey === 'string') {
+            return item[tableConfig.rowKey]
+          } else {
+            return undefined
+          }
+        } else {
+          return item.id
+        }
+      }),
+    // 表格选中的数组对象
     getSelectRowsArray: () => selectRowArray,
-    // 获取表格所有行数据
+    // 获取表格所有数据
     getStaticDataList: () => listData,
   }))
 
@@ -380,6 +559,7 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
         rowKey="id"
         rowClassName={() => 'editable-row'}
         loading={listLoading}
+        bordered
         components={{
           header: {
             cell: ResizableTitle,
@@ -395,6 +575,7 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
         pagination={
           _.isFunction(props.apiMethod)
             ? {
+                size: 'small',
                 position: ['bottomCenter'],
                 showTotal: (total) => `共${total}条`,
                 showSizeChanger: true,
@@ -411,4 +592,4 @@ const GenerateTable = (props: GenerateTableProp, ref: any) => {
   )
 }
 
-export default forwardRef(GenerateTable)
+export default React.memo(forwardRef(GenerateTable))

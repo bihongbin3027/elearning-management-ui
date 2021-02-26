@@ -3,7 +3,7 @@
  * @Author bihongbin
  * @Date 2020-11-18 09:33:55
  * @LastEditors bihongbin
- * @LastEditTime 2020-11-18 15:40:22
+ * @LastEditTime 2021-01-07 10:08:40
  */
 
 import React, { useRef } from 'react'
@@ -43,4 +43,4 @@ const FileSelection: React.FC<PropTypes> = (props) => {
   )
 }
 
-export default FileSelection
+export default React.memo(FileSelection)

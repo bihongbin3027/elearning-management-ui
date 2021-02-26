@@ -3,12 +3,12 @@ import { AnyObjectType, AjaxResultType, SetRowStateType } from '@/typings'
 
 export interface TreeNodeCallType {
   setLoading: (data: boolean) => void
-  getSelectNode: () => string[]
-  getSelectCurrent: () => AnyObjectType[]
+  getSelectNode: () => React.ReactText[]
+  getSelectCurrent: () => TreeType[]
   getCheckedNode: () => string[]
-  getCheckedCurrent: () => AnyObjectType[]
-  setSelectNode: (data: React.Key[]) => void
-  setCheckedNode: (data: React.Key[]) => void
+  getCheckedCurrent: () => TreeType[]
+  setSelectNode: (data: React.ReactText[]) => void
+  setCheckedNode: (data: string[]) => void
 }
 
 export interface PropTypes {
@@ -20,7 +20,7 @@ export interface PropTypes {
   lockApi?: (data: SetRowStateType) => Promise<AjaxResultType> // 挂起api
   unLockApi?: (data: SetRowStateType) => Promise<AjaxResultType> // 启用api
   deleteApi?: (data: string[]) => Promise<AjaxResultType> // 删除api
-  updateCallBack?: () => void // 更新树回调
+  updateCallBack?: (data?: { type?: 'hang' | 'enable' | 'delete' }) => void // 更新树回调(挂起，启用，删除)
   onSelect?: (data: React.Key[], e: AnyObjectType) => void // 选中节点触发回调
   onDropCallBack?: (info: AnyObjectType, data: TreeType[]) => void // 拖拽完成回调
   onVerificationDropCallBack?: (
